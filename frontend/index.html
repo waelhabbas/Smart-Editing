@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Editing — مونتاج ذكي</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Grain overlay -->
+    <div class="grain"></div>
+
+    <!-- Ambient background -->
+    <div class="ambient-bg">
+        <div class="ambient-orb ambient-orb--1"></div>
+        <div class="ambient-orb ambient-orb--2"></div>
+        <div class="ambient-orb ambient-orb--3"></div>
+    </div>
+
+    <div class="app-shell">
+        <!-- Top bar -->
+        <header class="topbar">
+            <div class="topbar__brand">
+                <div class="brand-mark">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <rect x="2" y="2" width="10" height="10" rx="2" fill="var(--accent)"/>
+                        <rect x="16" y="2" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.5"/>
+                        <rect x="2" y="16" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.3"/>
+                        <rect x="16" y="16" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.7"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-name">Smart Editing</span>
+                    <span class="brand-version">v1.0</span>
+                </div>
+            </div>
+            <div class="topbar__status" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span class="status-text">جاهز</span>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="workspace">
+            <!-- Left panel: Upload & Settings -->
+            <section class="panel panel--input" id="inputPanel">
+                <div class="panel__header">
+                    <h2 class="panel__title">الملفات والإعدادات</h2>
+                    <span class="panel__badge">01</span>
+                </div>
+
+                <div class="panel__body">
+                    <!-- Video upload -->
+                    <div class="upload-zone" id="videoZone" data-accept="video/*">
+                        <div class="upload-zone__inner">
+                            <div class="upload-zone__icon">
+                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                                    <path d="M8 12C8 9.79 9.79 8 12 8H28C30.21 8 32 9.79 32 12V28C32 30.21 30.21 32 28 32H12C9.79 32 8 30.21 8 28V12Z" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M17 15L25 20L17 25V15Z" fill="currentColor" opacity="0.4"/>
+                                </svg>
+                            </div>
+                            <div class="upload-zone__text">
+                                <strong>ملف الفيديو</strong>
+                                <span>اسحب الملف هنا أو اضغط للاختيار</span>
+                            </div>
+                            <div class="upload-zone__file" id="videoFileName"></div>
+                        </div>
+                        <input type="file" id="videoInput" accept="video/*" hidden>
+                    </div>
+
+                    <!-- Script upload (optional) -->
+                    <div class="upload-zone upload-zone--small" id="scriptZone" data-accept=".docx,.xlsx,.csv,.txt">
+                        <div class="upload-zone__inner">
+                            <div class="upload-zone__icon">
+                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                    <path d="M8 6C8 4.9 8.9 4 10 4H18L24 10V26C24 27.1 23.1 28 22 28H10C8.9 28 8 27.1 8 26V6Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                    <path d="M18 4V10H24" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                    <path d="M12 16H20M12 20H18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="upload-zone__text">
+                                <strong>السكريبت <span class="optional-badge">اختياري</span></strong>
+                                <span>docx, xlsx, csv, txt</span>
+                            </div>
+                            <div class="upload-zone__file" id="scriptFileName"></div>
+                        </div>
+                        <input type="file" id="scriptInput" accept=".docx,.xlsx,.csv,.txt" hidden>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="divider">
+                        <span class="divider__label">الإعدادات</span>
+                    </div>
+
+                    <!-- Settings -->
+                    <div class="settings-grid">
+                        <!-- Silence duration -->
+                        <div class="setting">
+                            <div class="setting__header">
+                                <label class="setting__label">الحد الأدنى للسكتة</label>
+                                <output class="setting__value" id="silenceValue">0.5 ث</output>
+                            </div>
+                            <input type="range" class="slider" id="silenceSlider"
+                                   min="300" max="5000" value="500" step="100">
+                            <div class="slider-range">
+                                <span>0.3 ث</span>
+                                <span>5.0 ث</span>
+                            </div>
+                        </div>
+
+                        <!-- Padding -->
+                        <div class="setting">
+                            <div class="setting__header">
+                                <label class="setting__label">هامش الصمت</label>
+                                <output class="setting__value" id="paddingValue">150 مل/ث</output>
+                            </div>
+                            <input type="range" class="slider" id="paddingSlider"
+                                   min="0" max="750" value="150" step="25">
+                            <div class="slider-range">
+                                <span>0</span>
+                                <span>750 مل/ث</span>
+                            </div>
+                        </div>
+
+                        <!-- Gemini API Key -->
+                        <div class="setting">
+                            <label class="setting__label">مفتاح Gemini API</label>
+                            <div class="api-key-wrap">
+                                <input type="password" class="api-key-input" id="geminiApiKey"
+                                       placeholder="أدخل مفتاح Google Gemini API..."
+                                       dir="ltr" autocomplete="off">
+                                <button type="button" class="api-key-toggle" id="apiKeyToggle" title="إظهار/إخفاء">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <path d="M8 3C4.5 3 1.5 5.5 1 8C1.5 10.5 4.5 13 8 13C11.5 13 14.5 10.5 15 8C14.5 5.5 11.5 3 8 3Z" stroke="currentColor" stroke-width="1.2"/>
+                                        <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Language -->
+                        <div class="setting">
+                            <label class="setting__label">لغة الكلام</label>
+                            <div class="select-wrap">
+                                <select id="languageSelect" class="select">
+                                    <option value="">كشف تلقائي</option>
+                                    <option value="ar">عربي</option>
+                                    <option value="en">إنجليزي</option>
+                                </select>
+                                <svg class="select-arrow" width="12" height="12" viewBox="0 0 12 12"><path d="M3 5L6 8L9 5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Process button -->
+                    <button class="btn-process" id="processBtn" disabled>
+                        <span class="btn-process__text">ابدأ المعالجة</span>
+                        <span class="btn-process__icon">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M7 4L15 10L7 16V4Z" fill="currentColor"/>
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right panel: Progress & Results -->
+            <section class="panel panel--output" id="outputPanel">
+                <div class="panel__header">
+                    <h2 class="panel__title">النتائج</h2>
+                    <span class="panel__badge">02</span>
+                </div>
+
+                <div class="panel__body">
+                    <!-- Empty state -->
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-state__visual">
+                            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                                <circle cx="40" cy="40" r="30" stroke="var(--surface-3)" stroke-width="1" stroke-dasharray="4 4"/>
+                                <path d="M35 30L50 40L35 50V30Z" stroke="var(--surface-3)" stroke-width="1.5" fill="none"/>
+                            </svg>
+                        </div>
+                        <p class="empty-state__text">ارفع الفيديو<br>ثم اضغط "ابدأ المعالجة"</p>
+                    </div>
+
+                    <!-- Processing state -->
+                    <div class="processing-state hidden" id="processingState">
+                        <div class="processing-visual">
+                            <div class="processing-ring">
+                                <svg width="120" height="120" viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="52" stroke="var(--surface-3)" stroke-width="2" fill="none"/>
+                                    <circle cx="60" cy="60" r="52" stroke="var(--accent)" stroke-width="2.5" fill="none"
+                                            stroke-dasharray="327" stroke-dashoffset="250" stroke-linecap="round"
+                                            class="processing-ring__progress"/>
+                                </svg>
+                                <div class="processing-ring__label">
+                                    <span class="processing-step" id="processingStep">النسخ الصوتي</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="processing-steps">
+                            <div class="step" data-step="1">
+                                <div class="step__indicator"></div>
+                                <span>استخراج الصوت</span>
+                            </div>
+                            <div class="step" data-step="2">
+                                <div class="step__indicator"></div>
+                                <span>النسخ الصوتي</span>
+                            </div>
+                            <div class="step" data-step="3">
+                                <div class="step__indicator"></div>
+                                <span>تحليل Gemini AI</span>
+                            </div>
+                            <div class="step" data-step="4">
+                                <div class="step__indicator"></div>
+                                <span>حذف السكتات</span>
+                            </div>
+                            <div class="step" data-step="5">
+                                <div class="step__indicator"></div>
+                                <span>توليد الملف</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results state -->
+                    <div class="results-state hidden" id="resultsState">
+                        <!-- Stats row -->
+                        <div class="stats-row">
+                            <div class="stat-card">
+                                <span class="stat-card__label">المشاهد</span>
+                                <span class="stat-card__value" id="statScenes">—</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-card__label">المدة الأصلية</span>
+                                <span class="stat-card__value" id="statOriginal">—</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-card__label">المدة النهائية</span>
+                                <span class="stat-card__value stat-card__value--accent" id="statFinal">—</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-card__label">التوفير</span>
+                                <span class="stat-card__value stat-card__value--green" id="statSaved">—</span>
+                            </div>
+                        </div>
+
+                        <!-- Token usage -->
+                        <div class="token-usage hidden" id="tokenUsage">
+                            <div class="token-usage__icon">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M8 1L10 6H15L11 9.5L12.5 15L8 11.5L3.5 15L5 9.5L1 6H6L8 1Z" stroke="currentColor" stroke-width="1.2" fill="none"/>
+                                </svg>
+                            </div>
+                            <span class="token-usage__label">Gemini Tokens:</span>
+                            <span class="token-usage__detail">إدخال <strong id="tokenInput">—</strong></span>
+                            <span class="token-usage__sep">|</span>
+                            <span class="token-usage__detail">إخراج <strong id="tokenOutput">—</strong></span>
+                            <span class="token-usage__sep">|</span>
+                            <span class="token-usage__detail">المجموع <strong id="tokenTotal">—</strong></span>
+                        </div>
+
+                        <!-- Scenes table -->
+                        <div class="table-wrap">
+                            <table class="shots-table">
+                                <thead>
+                                    <tr>
+                                        <th>المشهد</th>
+                                        <th>عدد التيكات</th>
+                                        <th>البداية</th>
+                                        <th>النهاية</th>
+                                        <th>المدة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scenesTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Download buttons -->
+                        <div class="download-buttons">
+                            <a class="btn-download" id="downloadBtn" href="#" download>
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 3V13M10 13L6 9M10 13L14 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <path d="M3 15V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>تحميل XML — التايملاين</span>
+                            </a>
+                            <a class="btn-download btn-download--srt" id="srtDownloadBtn" href="#" download>
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 3V13M10 13L6 9M10 13L14 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <path d="M3 15V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>تحميل SRT — الترانسكربشن</span>
+                            </a>
+                        </div>
+
+                        <p class="import-hint">File → Import في Premiere Pro لاستيراد الملفين — XML للتايملاين و SRT للنصوص</p>
+                    </div>
+
+                    <!-- Error state -->
+                    <div class="error-state hidden" id="errorState">
+                        <div class="error-state__icon">
+                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                <circle cx="24" cy="24" r="20" stroke="var(--danger)" stroke-width="1.5"/>
+                                <path d="M24 16V28" stroke="var(--danger)" stroke-width="2" stroke-linecap="round"/>
+                                <circle cx="24" cy="33" r="1.5" fill="var(--danger)"/>
+                            </svg>
+                        </div>
+                        <p class="error-state__message" id="errorMessage">حدث خطأ</p>
+                        <button class="btn-retry" id="retryBtn">إعادة المحاولة</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bottombar">
+            <span class="bottombar__hint">استورد ملف XML في Premiere Pro عبر File → Import</span>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

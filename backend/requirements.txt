@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+faster-whisper
+pydub
+rapidfuzz
+python-docx
+openpyxl
+httpx
+aiofiles
