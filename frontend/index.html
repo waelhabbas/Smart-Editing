@@ -90,7 +90,49 @@
                         <input type="file" id="scriptInput" accept=".docx,.xlsx,.csv,.txt" hidden>
                     </div>
 
-                    <!-- Divider -->
+                    <!-- B-Roll divider -->
+                    <div class="divider">
+                        <span class="divider__label">بي رول <span class="optional-badge">اختياري</span></span>
+                    </div>
+
+                    <!-- B-Roll video files upload (multiple) -->
+                    <div class="upload-zone upload-zone--small" id="brollZone">
+                        <div class="upload-zone__inner">
+                            <div class="upload-zone__icon">
+                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                    <rect x="4" y="4" width="24" height="24" rx="4" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                    <path d="M4 20L11 13L16 18L21 13L28 20" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                </svg>
+                            </div>
+                            <div class="upload-zone__text">
+                                <strong>ملفات البي رول <span class="optional-badge">اختياري</span></strong>
+                                <span>اختر ملف أو أكثر</span>
+                            </div>
+                            <div class="upload-zone__file" id="brollFileNames"></div>
+                        </div>
+                        <input type="file" id="brollInput" accept="video/*" multiple hidden>
+                    </div>
+
+                    <!-- B-Roll instructions file -->
+                    <div class="upload-zone upload-zone--small" id="brollInstructionsZone">
+                        <div class="upload-zone__inner">
+                            <div class="upload-zone__icon">
+                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                    <path d="M8 6C8 4.9 8.9 4 10 4H18L24 10V26C24 27.1 23.1 28 22 28H10C8.9 28 8 27.1 8 26V6Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                    <path d="M18 4V10H24" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                    <path d="M12 16H20M12 20H18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="upload-zone__text">
+                                <strong>ملف تعليمات البي رول <span class="optional-badge">اختياري</span></strong>
+                                <span>ملف نصي يحدد أماكن البي رول</span>
+                            </div>
+                            <div class="upload-zone__file" id="brollInstructionsFileName"></div>
+                        </div>
+                        <input type="file" id="brollInstructionsInput" accept=".txt" hidden>
+                    </div>
+
+                    <!-- Settings Divider -->
                     <div class="divider">
                         <span class="divider__label">الإعدادات</span>
                     </div>
@@ -223,6 +265,10 @@
                                 <div class="step__indicator"></div>
                                 <span>توليد الملف</span>
                             </div>
+                            <div class="step hidden" data-step="6" id="brollStep">
+                                <div class="step__indicator"></div>
+                                <span>إضافة البي رول</span>
+                            </div>
                         </div>
                     </div>
 
@@ -299,6 +345,24 @@
                         </div>
 
                         <p class="import-hint">File → Import في Premiere Pro لاستيراد الملفين — XML للتايملاين و SRT للنصوص</p>
+
+                        <!-- B-Roll Results (shown only when B-Roll was processed) -->
+                        <div class="broll-results hidden" id="brollResults">
+                            <div class="divider" style="margin-top: 8px;">
+                                <span class="divider__label">بي رول</span>
+                            </div>
+                            <div class="broll-success">
+                                <span id="brollCount"></span>
+                            </div>
+                            <div class="broll-warnings hidden" id="brollWarnings"></div>
+                            <a class="btn-download" id="brollDownloadBtn" href="#" download>
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 3V13M10 13L6 9M10 13L14 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <path d="M3 15V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>تحميل XML — التايملاين مع البي رول</span>
+                            </a>
+                        </div>
                     </div>
 
                     <!-- Error state -->

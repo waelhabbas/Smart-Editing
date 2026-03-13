@@ -1170,6 +1170,45 @@ body {
     letter-spacing: 0.02em;
 }
 
+/* ---- B-Roll results ---- */
+.broll-results {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Panel scroll for extra content */
+.panel--input .panel__body {
+    overflow-y: auto;
+    max-height: calc(100vh - 140px);
+}
+
+.broll-success {
+    padding: 12px 16px;
+    background: rgba(60, 217, 122, 0.1);
+    border: 1px solid rgba(60, 217, 122, 0.3);
+    border-radius: var(--radius-sm);
+    color: var(--success);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.broll-warning {
+    padding: 8px 12px;
+    background: rgba(232, 168, 56, 0.1);
+    border: 1px solid rgba(232, 168, 56, 0.25);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-size: 0.78rem;
+}
+
+.broll-warnings {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
 /* ---- Utilities ---- */
 .hidden {
     display: none !important;

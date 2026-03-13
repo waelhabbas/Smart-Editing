@@ -4,6 +4,7 @@ Auto-detects scenes from video and generates Premiere Pro timeline.
 """
 
 import os
+import json
 import uuid
 import asyncio
 import logging
@@ -137,6 +138,25 @@ async def process_video(
             selected_clips, silences, padding_ms=silence_padding_ms
         )
 
+        # Compute timeline positions for each clip (needed for B-Roll matching)
+        timeline_pos_sec = 0.0
+        for clip in final_clips:
+            clip_dur = clip["end"] - clip["start"]
+            clip["timeline_start"] = timeline_pos_sec
+            clip["timeline_end"] = timeline_pos_sec + clip_dur
+            timeline_pos_sec += clip_dur
+
+        # Save metadata for B-Roll post-processing
+        metadata = {
+            "job_id": job_id,
+            "segments": segments,
+            "final_clips": final_clips,
+        }
+        metadata_path = str(OUTPUT_DIR / f"{job_id}_metadata.json")
+        with open(metadata_path, "w", encoding="utf-8") as mf:
+            json.dump(metadata, mf, ensure_ascii=False)
+        log.info("Job %s: metadata saved for B-Roll", job_id)
+
         # Clean up audio
         if os.path.exists(audio_path):
             os.remove(audio_path)
@@ -202,6 +222,165 @@ async def process_video(
                     log.info("Job %s: cleaned up %s", job_id, Path(path).name)
                 except OSError:
                     pass
+
+
+@app.post("/api/add-broll")
+async def add_broll(
+    job_id: str = Form(...),
+    broll_files: list[UploadFile] = File(...),
+    instructions_file: UploadFile = File(...),
+):
+    """Add B-Roll clips to an existing processed timeline."""
+    from broll_parser import parse_broll_instructions
+    from broll_matcher import find_word_on_timeline, find_paragraph_span
+    from xml_generator import get_video_info, seconds_to_frames, add_broll_to_xml
+
+    # Validate job exists
+    metadata_path = OUTPUT_DIR / f"{job_id}_metadata.json"
+    xml_path = OUTPUT_DIR / f"{job_id}_timeline.xml"
+    if not metadata_path.exists() or not xml_path.exists():
+        raise HTTPException(404, "لم يتم العثور على المشروع. قم بمعالجة الفيديو أولاً")
+
+    # Load metadata
+    with open(metadata_path, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
+
+    segments = metadata["segments"]
+    final_clips = metadata["final_clips"]
+
+    # Save uploaded B-Roll files
+    broll_dir = UPLOADS_DIR / f"{job_id}_broll"
+    broll_dir.mkdir(exist_ok=True)
+
+    broll_paths = {}
+    for bf in broll_files:
+        dest = str(broll_dir / bf.filename)
+        await save_upload_streaming(bf, dest)
+        broll_paths[bf.filename] = dest
+    log.info("Job %s B-Roll: uploaded files: %s", job_id, list(broll_paths.keys()))
+    log.info("Job %s B-Roll: metadata has %d segments, %d final_clips",
+             job_id, len(segments), len(final_clips))
+
+    # Save and parse instructions file
+    instr_path = str(UPLOADS_DIR / f"{job_id}_broll_instructions.txt")
+    await save_upload_streaming(instructions_file, instr_path)
+
+    try:
+        instructions = parse_broll_instructions(instr_path)
+        log.info("Job %s B-Roll: parsed %d instructions: %s",
+                 job_id, len(instructions),
+                 [(i["broll_filename"], i["target_word"], i["is_full"]) for i in instructions])
+
+        # Read the sequence timebase from existing XML
+        import xml.etree.ElementTree as ET_parse
+        tree = ET_parse.parse(str(xml_path))
+        seq_tb = int(tree.find(".//sequence/rate/timebase").text)
+
+        # Match each instruction to a timeline position
+        broll_clips = []
+        warnings = []
+        broll_file_registry = {}
+        file_counter = 1
+
+        for instr in instructions:
+            log.info("Job %s B-Roll: processing instruction: file='%s', word='%s', full=%s",
+                     job_id, instr["broll_filename"], instr["target_word"], instr["is_full"])
+            if instr["broll_filename"] not in broll_paths:
+                msg = f"ملف B-Roll غير موجود: {instr['broll_filename']} (الملفات المرفوعة: {list(broll_paths.keys())})"
+                log.warning("Job %s B-Roll: %s", job_id, msg)
+                warnings.append(msg)
+                continue
+
+            broll_path = broll_paths[instr["broll_filename"]]
+
+            # Register B-Roll file if not already
+            if instr["broll_filename"] not in broll_file_registry:
+                broll_info = await asyncio.to_thread(get_video_info, broll_path)
+                broll_file_registry[instr["broll_filename"]] = {
+                    "path": broll_path,
+                    "info": broll_info,
+                    "file_id": f"file-broll-{file_counter}",
+                }
+                file_counter += 1
+
+            reg = broll_file_registry[instr["broll_filename"]]
+
+            if instr["is_full"]:
+                span = find_paragraph_span(instr["target_word"], segments, final_clips)
+                if not span:
+                    warnings.append(
+                        f"لم يتم العثور على الكلمة '{instr['target_word']}' في التايملاين"
+                    )
+                    continue
+
+                tl_start = span["timeline_start"]
+                tl_end = span["timeline_end"]
+                duration_sec = tl_end - tl_start
+
+                broll_clips.append({
+                    "broll_filename": instr["broll_filename"],
+                    "timeline_start_frames": seconds_to_frames(tl_start, seq_tb),
+                    "timeline_end_frames": seconds_to_frames(tl_end, seq_tb),
+                    "source_in_frames": 0,
+                    "source_out_frames": seconds_to_frames(duration_sec, seq_tb),
+                    "file_id": reg["file_id"],
+                })
+            else:
+                word_match = find_word_on_timeline(
+                    instr["target_word"], segments, final_clips,
+                )
+                if not word_match:
+                    warnings.append(
+                        f"لم يتم العثور على الكلمة '{instr['target_word']}' في التايملاين"
+                    )
+                    continue
+
+                tl_start = word_match["timeline_position"]
+                broll_duration = instr["source_out"] - instr["source_in"]
+                tl_end = tl_start + broll_duration
+
+                broll_clips.append({
+                    "broll_filename": instr["broll_filename"],
+                    "timeline_start_frames": seconds_to_frames(tl_start, seq_tb),
+                    "timeline_end_frames": seconds_to_frames(tl_end, seq_tb),
+                    "source_in_frames": seconds_to_frames(instr["source_in"], seq_tb),
+                    "source_out_frames": seconds_to_frames(instr["source_out"], seq_tb),
+                    "file_id": reg["file_id"],
+                })
+
+        if not broll_clips:
+            detail = "لم يتم مطابقة أي بي رول مع التايملاين"
+            if warnings:
+                detail += "\n" + "\n".join(warnings)
+            log.warning("Job %s B-Roll: no clips matched. Warnings: %s", job_id, warnings)
+            raise HTTPException(400, detail)
+
+        # Generate updated XML with B-Roll V2 track
+        broll_xml_filename = f"{job_id}_timeline_broll.xml"
+        broll_xml_path = str(OUTPUT_DIR / broll_xml_filename)
+
+        await asyncio.to_thread(
+            add_broll_to_xml,
+            str(xml_path), broll_clips, broll_file_registry, broll_xml_path,
+        )
+
+        log.info("Job %s: B-Roll XML generated with %d clips", job_id, len(broll_clips))
+
+        return JSONResponse({
+            "status": "success",
+            "download_url": f"/api/download/{broll_xml_filename}",
+            "broll_count": len(broll_clips),
+            "warnings": warnings,
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception("Job %s: B-Roll processing failed", job_id)
+        raise HTTPException(500, f"خطأ في معالجة البي رول: {str(e)}")
+    finally:
+        if os.path.exists(instr_path):
+            os.remove(instr_path)
 
 
 @app.get("/api/download/{filename}")

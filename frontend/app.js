@@ -37,6 +37,9 @@ const errorMessage = document.getElementById('errorMessage');
 // State
 let videoFile = null;
 let scriptFile = null;
+let currentJobId = null;
+let brollFiles = [];
+let brollInstructionsFile = null;
 
 // ---- File upload handling ----
 
@@ -140,7 +143,7 @@ const STEPS = [
 let stepInterval = null;
 
 function startStepsAnimation() {
-    const stepEls = document.querySelectorAll('.step');
+    const stepEls = document.querySelectorAll('.step:not(.hidden)');
     let current = 0;
 
     stepEls.forEach(el => {
@@ -200,6 +203,18 @@ processBtn.addEventListener('click', async () => {
     if (!videoFile) return;
 
     processBtn.disabled = true;
+
+    // Show/hide B-Roll step indicator
+    const brollStepEl = document.getElementById('brollStep');
+    if (hasBrollReady()) {
+        brollStepEl.classList.remove('hidden');
+    } else {
+        brollStepEl.classList.add('hidden');
+    }
+
+    // Reset B-Roll results from previous run
+    brollResults.classList.add('hidden');
+
     showState(processingState);
     setStatus('جاري المعالجة...', 'processing');
     startStepsAnimation();
@@ -215,6 +230,7 @@ processBtn.addEventListener('click', async () => {
     formData.append('silence_padding_ms', paddingSlider.value);
 
     try {
+        // Phase 1: Main video processing
         const response = await fetch('/api/process', {
             method: 'POST',
             body: formData,
@@ -228,6 +244,29 @@ processBtn.addEventListener('click', async () => {
 
         stopStepsAnimation();
         displayResults(data);
+
+        // Phase 2: Auto-chain B-Roll (if files provided)
+        if (hasBrollReady()) {
+            brollStepEl.classList.add('active');
+            processingStep.textContent = 'إضافة البي رول';
+            setStatus('جاري إضافة البي رول...', 'processing');
+
+            try {
+                const brollData = await processBroll(data.job_id);
+                brollStepEl.classList.remove('active');
+                brollStepEl.classList.add('done');
+                displayBrollResults(brollData);
+            } catch (brollErr) {
+                brollStepEl.classList.remove('active');
+                // Show B-Roll error as warning, don't fail main results
+                document.getElementById('brollCount').textContent = 'فشل في إضافة البي رول';
+                const warningsEl = document.getElementById('brollWarnings');
+                warningsEl.innerHTML = `<div class="broll-warning">${brollErr.message}</div>`;
+                warningsEl.classList.remove('hidden');
+                brollResults.classList.remove('hidden');
+            }
+        }
+
         showState(resultsState);
         setStatus('تم بنجاح', 'ready');
 
@@ -244,6 +283,7 @@ processBtn.addEventListener('click', async () => {
 // ---- Display results ----
 
 function displayResults(data) {
+    currentJobId = data.job_id;
     document.getElementById('statScenes').textContent = data.total_scenes;
     document.getElementById('statOriginal').textContent = formatTime(data.original_duration);
     document.getElementById('statFinal').textContent = formatTime(data.final_duration);
@@ -289,4 +329,99 @@ retryBtn.addEventListener('click', () => {
     showState(emptyState);
     setStatus('جاهز', 'ready');
     updateProcessBtn();
+    // Reset B-Roll results
+    brollResults.classList.add('hidden');
+    document.getElementById('brollWarnings').classList.add('hidden');
 });
+
+// ---- B-Roll ----
+
+const brollZone = document.getElementById('brollZone');
+const brollInput = document.getElementById('brollInput');
+const brollFileNames = document.getElementById('brollFileNames');
+const brollInstructionsZone = document.getElementById('brollInstructionsZone');
+const brollInstructionsInput = document.getElementById('brollInstructionsInput');
+const brollInstructionsFileName = document.getElementById('brollInstructionsFileName');
+const brollResults = document.getElementById('brollResults');
+
+// Multi-file upload for B-Roll videos
+brollZone.addEventListener('click', () => brollInput.click());
+
+brollInput.addEventListener('change', (e) => {
+    brollFiles = Array.from(e.target.files);
+    if (brollFiles.length > 0) {
+        brollFileNames.textContent = brollFiles.map(f => f.name).join('، ');
+        brollZone.classList.add('has-file');
+    }
+});
+
+brollZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    brollZone.classList.add('dragover');
+});
+
+brollZone.addEventListener('dragleave', () => {
+    brollZone.classList.remove('dragover');
+});
+
+brollZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    brollZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+        brollFiles = Array.from(e.dataTransfer.files);
+        brollFileNames.textContent = brollFiles.map(f => f.name).join('، ');
+        brollZone.classList.add('has-file');
+        const dt = new DataTransfer();
+        brollFiles.forEach(f => dt.items.add(f));
+        brollInput.files = dt.files;
+    }
+});
+
+// Instructions file (single file)
+setupUploadZone(brollInstructionsZone, brollInstructionsInput, brollInstructionsFileName, (file) => {
+    brollInstructionsFile = file;
+});
+
+// ---- B-Roll auto-chain helpers ----
+
+function hasBrollReady() {
+    return brollFiles.length > 0 && brollInstructionsFile !== null;
+}
+
+async function processBroll(jobId) {
+    const formData = new FormData();
+    formData.append('job_id', jobId);
+    for (const file of brollFiles) {
+        formData.append('broll_files', file);
+    }
+    formData.append('instructions_file', brollInstructionsFile);
+
+    const response = await fetch('/api/add-broll', {
+        method: 'POST',
+        body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.detail || 'خطأ في إضافة البي رول');
+    }
+    return data;
+}
+
+function displayBrollResults(data) {
+    document.getElementById('brollCount').textContent =
+        `تمت إضافة ${data.broll_count} مقطع بي رول بنجاح`;
+
+    const warningsEl = document.getElementById('brollWarnings');
+    if (data.warnings && data.warnings.length > 0) {
+        warningsEl.innerHTML = data.warnings
+            .map(w => `<div class="broll-warning">${w}</div>`)
+            .join('');
+        warningsEl.classList.remove('hidden');
+    } else {
+        warningsEl.classList.add('hidden');
+    }
+
+    document.getElementById('brollDownloadBtn').href = data.download_url;
+    brollResults.classList.remove('hidden');
+}
