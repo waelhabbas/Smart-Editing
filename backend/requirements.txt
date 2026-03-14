@@ -1,10 +1,10 @@
 fastapi
 uvicorn[standard]
 python-multipart
-faster-whisper
+python-dotenv
+whisperx
 pydub
 rapidfuzz
-python-docx
-openpyxl
-httpx
+google-generativeai
+torch
 aiofiles

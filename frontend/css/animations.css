@@ -1,0 +1,270 @@
+/* ============================================
+   Animations - Keyframes, Transitions
+   ============================================ */
+
+/* === Page Load Fade-in === */
+@keyframes fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slide-left {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+[dir="rtl"] .anim-slide-left {
+    animation-name: slide-right;
+}
+
+@keyframes slide-right {
+    from {
+        opacity: 0;
+        transform: translateX(-24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* === Stagger Delays === */
+.anim-fade-up {
+    animation: fade-up var(--duration-slower) var(--ease-out) both;
+}
+
+.anim-fade-in {
+    animation: fade-in var(--duration-slower) var(--ease-out) both;
+}
+
+.anim-scale-in {
+    animation: scale-in var(--duration-slower) var(--ease-out) both;
+}
+
+.anim-slide-left {
+    animation: slide-left var(--duration-slower) var(--ease-out) both;
+}
+
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 300ms; }
+.delay-4 { animation-delay: 400ms; }
+.delay-5 { animation-delay: 500ms; }
+.delay-6 { animation-delay: 600ms; }
+
+/* === Processing Spinner === */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(0.8); opacity: 0.5; }
+    50% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.8); opacity: 0.5; }
+}
+
+.spinner {
+    width: 80px;
+    height: 80px;
+    position: relative;
+    margin: var(--space-xl) auto;
+}
+
+.spinner__ring {
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--surface-border);
+    border-top-color: var(--text-primary);
+    border-radius: 50%;
+    animation: spin 1.2s linear infinite;
+}
+
+.spinner__ring:nth-child(2) {
+    inset: 8px;
+    border-top-color: transparent;
+    border-right-color: var(--text-secondary);
+    animation-duration: 1.6s;
+    animation-direction: reverse;
+}
+
+.spinner__center {
+    position: absolute;
+    inset: 20px;
+    border-radius: 50%;
+    background: var(--surface-glass);
+    animation: pulse-ring 2s ease-in-out infinite;
+}
+
+/* === Processing Steps === */
+.steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    color: var(--text-disabled);
+    transition: all var(--duration-normal) var(--ease-out);
+}
+
+.step__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--surface-border);
+    flex-shrink: 0;
+    transition: all var(--duration-normal) var(--ease-out);
+}
+
+.step--active {
+    color: var(--text-primary);
+    background: var(--surface-glass);
+}
+
+.step--active .step__dot {
+    background: var(--text-primary);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+    animation: pulse-ring 1.5s ease-in-out infinite;
+}
+
+.step--done {
+    color: var(--success);
+}
+
+.step--done .step__dot {
+    background: var(--success);
+}
+
+/* === Skeleton Loading === */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.skeleton {
+    background: linear-gradient(90deg,
+        var(--surface-glass) 25%,
+        var(--surface-glass-hover) 50%,
+        var(--surface-glass) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+
+/* === State transitions === */
+.state-enter {
+    animation: fade-up var(--duration-slow) var(--ease-out) both;
+}
+
+.state-exit {
+    animation: fade-in var(--duration-fast) var(--ease-out) both reverse;
+}
+
+/* === Hidden === */
+.hidden {
+    display: none !important;
+}
+
+/* === Background Logo Stroke Wave === */
+@keyframes stroke-wave {
+    0%, 100% {
+        stroke: rgba(255, 255, 255, 0.05);
+    }
+    50% {
+        stroke: rgba(255, 255, 255, 0.16);
+    }
+}
+
+@keyframes stroke-wave-light {
+    0%, 100% {
+        stroke: rgba(26, 10, 46, 0.04);
+    }
+    50% {
+        stroke: rgba(26, 10, 46, 0.12);
+    }
+}
+
+.bg-logo {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70vw;
+    max-width: 900px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bg-logo svg {
+    width: 100%;
+    height: auto;
+}
+
+.bg-logo path {
+    fill: none;
+    stroke-width: 0.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    animation: stroke-wave 8s ease-in-out infinite;
+}
+
+.bg-logo__frame {
+    stroke-width: 0.2;
+    animation-delay: -2.5s !important;
+}
+
+.bg-logo__icon {
+    stroke-width: 0.2;
+    animation-delay: -5s !important;
+}
+
+[data-theme="light"] .bg-logo path {
+    animation-name: stroke-wave-light;
+}
+
+/* === Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    body::before {
+        animation: none;
+    }
+}

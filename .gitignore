@@ -9,13 +9,10 @@ venv/
 env/
 
 # Uploads & Output (user data, not source code)
-uploads/*.mp4
-uploads/*.wav
-uploads/*.docx
-uploads/*.xlsx
-uploads/*.csv
+uploads/
 output/*.xml
 output/*.srt
+output/*.json
 
 # OS
 .DS_Store

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explainer &mdash; Smart Editing</title>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/themes.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header anim-fade-in">
+            <div class="header__left">
+                <a href="index.html" style="display:flex;align-items:center;">
+                    <img src="assets/logo.png" alt="Al Jazeera" class="header__logo" onerror="this.style.display='none'">
+                </a>
+                <div class="header__divider"></div>
+                <span class="header__title">Explainer</span>
+            </div>
+            <div class="header__right">
+                <button class="icon-btn" id="langToggle" title="AR / EN">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </button>
+                <button class="icon-btn" id="themeToggle" title="Toggle theme">
+                    <svg viewBox="0 0 24 24" id="themeIcon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main -->
+        <main class="main">
+            <div class="workflow">
+                <!-- LEFT: Input Panel -->
+                <div class="workflow__input">
+
+                    <!-- STEP 1 -->
+                    <section class="section anim-fade-up delay-1" id="step1Section">
+                        <div class="section__header">
+                            <h3 class="section__title">
+                                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l2 2"/></svg>
+                                <span data-i18n="step1_title">Step 1</span>
+                                <span style="color:var(--text-tertiary);font-weight:400;font-size:0.85rem" data-i18n="step1_subtitle">Video & Script</span>
+                            </h3>
+                        </div>
+
+                        <!-- Video Upload -->
+                        <div class="upload-zone" id="videoZone">
+                            <div class="upload-zone__icon">
+                                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M10 8l6 4-6 4V8z"/></svg>
+                            </div>
+                            <div class="upload-zone__text" data-i18n="upload_video">Upload video file</div>
+                            <div class="upload-zone__filename" id="videoFileName"></div>
+                            <input type="file" id="videoInput" accept="video/*">
+                        </div>
+
+                        <!-- CSV Upload -->
+                        <div class="upload-zone" id="csvZone" style="margin-top:var(--space-md)">
+                            <div class="upload-zone__icon">
+                                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+                            </div>
+                            <div class="upload-zone__text" data-i18n="upload_csv">Upload CSV file</div>
+                            <div class="upload-zone__filename" id="csvFileName"></div>
+                            <input type="file" id="csvInput" accept=".csv">
+                        </div>
+
+                        <a href="/api/templates/Explainer" class="btn btn--sm" style="margin-top:var(--space-md);align-self:flex-start">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                            <span data-i18n="download_template">Download template</span>
+                        </a>
+
+                        <!-- Settings -->
+                        <details style="margin-top:var(--space-lg)">
+                            <summary style="cursor:pointer;color:var(--text-tertiary);font-size:0.85rem;font-weight:500" data-i18n="settings">Settings</summary>
+                            <div class="settings-grid" style="margin-top:var(--space-md)">
+                                <div class="slider-group">
+                                    <div class="slider-group__header">
+                                        <span class="slider-group__label" data-i18n="silence_min">Min silence</span>
+                                        <span class="slider-group__value" id="silenceVal">500ms</span>
+                                    </div>
+                                    <input type="range" id="silenceSlider" min="300" max="5000" value="500" step="100">
+                                </div>
+                                <div class="slider-group">
+                                    <div class="slider-group__header">
+                                        <span class="slider-group__label" data-i18n="silence_padding">Silence padding</span>
+                                        <span class="slider-group__value" id="paddingVal">150ms</span>
+                                    </div>
+                                    <input type="range" id="paddingSlider" min="0" max="750" value="150" step="25">
+                                </div>
+                                <div class="input-group">
+                                    <label class="input-group__label" data-i18n="api_key">Gemini API Key</label>
+                                    <input type="password" class="input-field" id="apiKeyInput" data-i18n="api_key_placeholder" dir="ltr" autocomplete="off">
+                                </div>
+                                <div class="input-group">
+                                    <label class="input-group__label" data-i18n="language">Language</label>
+                                    <select class="input-field" id="langSelect">
+                                        <option value="" data-i18n="lang_auto">Auto</option>
+                                        <option value="ar" data-i18n="lang_ar">Arabic</option>
+                                        <option value="en" data-i18n="lang_en">English</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- Process Button -->
+                        <button class="btn btn--primary" id="step1Btn" disabled style="margin-top:var(--space-lg);width:100%">
+                            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            <span data-i18n="btn_process">Start Processing</span>
+                        </button>
+                    </section>
+
+                    <!-- STEP 2 (hidden until Step 1 completes) -->
+                    <section class="section hidden" id="step2Section">
+                        <div class="section__header">
+                            <h3 class="section__title">
+                                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                <span data-i18n="step2_title">Step 2</span>
+                                <span style="color:var(--text-tertiary);font-weight:400;font-size:0.85rem" data-i18n="step2_subtitle">B-Roll & Sound Bite Files</span>
+                            </h3>
+                        </div>
+
+                        <!-- Required files list -->
+                        <div id="requiredFilesList"></div>
+
+                        <!-- Media Upload -->
+                        <div class="upload-zone" id="mediaZone" style="margin-top:var(--space-md)">
+                            <div class="upload-zone__icon">
+                                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            </div>
+                            <div class="upload-zone__text" data-i18n="upload_media">Upload files</div>
+                            <div class="upload-zone__filename" id="mediaFileNames"></div>
+                            <input type="file" id="mediaInput" accept="video/*" multiple>
+                        </div>
+
+                        <!-- Logo Upload (optional) -->
+                        <div class="upload-zone" id="logoZone" style="margin-top:var(--space-md)">
+                            <div class="upload-zone__icon">
+                                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                            </div>
+                            <div class="upload-zone__text" data-i18n="upload_logo">Upload Logo (optional)</div>
+                            <div class="upload-zone__filename" id="logoFileNames"></div>
+                            <input type="file" id="logoInput" accept="image/png,image/jpeg,image/*">
+                        </div>
+
+                        <!-- Outro Upload (optional) -->
+                        <div class="upload-zone" id="outroZone" style="margin-top:var(--space-md)">
+                            <div class="upload-zone__icon">
+                                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M10 8l6 4-6 4V8z"/></svg>
+                            </div>
+                            <div class="upload-zone__text" data-i18n="upload_outro">Upload Outro (optional)</div>
+                            <div class="upload-zone__filename" id="outroFileNames"></div>
+                            <input type="file" id="outroInput" accept="video/*">
+                        </div>
+
+                        <!-- Transition Upload (optional) -->
+                        <div class="upload-zone" id="transitionZone" style="margin-top:var(--space-md)">
+                            <div class="upload-zone__icon">
+                                <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                            </div>
+                            <div class="upload-zone__text" data-i18n="upload_transition">Upload Transition (optional)</div>
+                            <div class="upload-zone__filename" id="transitionFileNames"></div>
+                            <input type="file" id="transitionInput" accept="video/*">
+                        </div>
+
+                        <button class="btn btn--primary" id="step2Btn" disabled style="margin-top:var(--space-lg);width:100%">
+                            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <span data-i18n="btn_finalize">Finalise Processing</span>
+                        </button>
+                    </section>
+                </div>
+
+                <!-- RIGHT: Output Panel -->
+                <div class="workflow__output">
+                    <!-- Empty State -->
+                    <section class="section" id="emptyState">
+                        <div style="text-align:center;padding:var(--space-3xl) 0">
+                            <svg viewBox="0 0 24 24" width="48" height="48" stroke="var(--text-disabled)" stroke-width="1" fill="none" style="margin-bottom:var(--space-lg)">
+                                <rect x="2" y="2" width="20" height="20" rx="2"/><path d="M10 8l6 4-6 4V8z"/>
+                            </svg>
+                            <h3 style="color:var(--text-tertiary);font-weight:400;font-size:0.95rem" data-i18n="empty_title">Start with Step 1</h3>
+                            <p style="font-size:0.8rem;margin-top:var(--space-xs)" data-i18n="empty_desc">Upload video and CSV file to begin processing</p>
+                        </div>
+                    </section>
+
+                    <!-- Processing State -->
+                    <section class="section hidden" id="processingState">
+                        <div class="section__header">
+                            <h3 class="section__title" data-i18n="processing_title">Processing</h3>
+                        </div>
+                        <div class="spinner">
+                            <div class="spinner__ring"></div>
+                            <div class="spinner__ring"></div>
+                            <div class="spinner__center"></div>
+                        </div>
+                        <div class="steps" id="processingSteps">
+                            <div class="step" data-step="audio"><span class="step__dot"></span><span data-i18n="step_audio">Extracting audio</span></div>
+                            <div class="step" data-step="transcribe"><span class="step__dot"></span><span data-i18n="step_transcribe">Transcribing</span></div>
+                            <div class="step" data-step="gemini"><span class="step__dot"></span><span data-i18n="step_gemini">Gemini AI analysis</span></div>
+                            <div class="step" data-step="silence"><span class="step__dot"></span><span data-i18n="step_silence">Removing silence</span></div>
+                            <div class="step" data-step="xml"><span class="step__dot"></span><span data-i18n="step_xml">Generating XML</span></div>
+                        </div>
+                    </section>
+
+                    <!-- Step 2 Processing State -->
+                    <section class="section hidden" id="processingState2">
+                        <div class="section__header">
+                            <h3 class="section__title" data-i18n="processing_title">Processing</h3>
+                        </div>
+                        <div class="spinner">
+                            <div class="spinner__ring"></div>
+                            <div class="spinner__ring"></div>
+                            <div class="spinner__center"></div>
+                        </div>
+                        <div class="steps" id="processingSteps2">
+                            <div class="step" data-step="broll"><span class="step__dot"></span><span data-i18n="step_broll">Adding B-Roll</span></div>
+                            <div class="step" data-step="soundbite"><span class="step__dot"></span><span data-i18n="step_soundbite">Adding Sound Bites</span></div>
+                            <div class="step" data-step="srt"><span class="step__dot"></span><span data-i18n="step_srt">Generating subtitles</span></div>
+                        </div>
+                    </section>
+
+                    <!-- Results State -->
+                    <section class="section hidden" id="resultsState">
+                        <div class="section__header">
+                            <h3 class="section__title" data-i18n="results_title">Results</h3>
+                        </div>
+
+                        <div class="stats-grid" id="statsGrid">
+                            <div class="stat-card"><div class="stat-card__value" id="statScenes">&mdash;</div><div class="stat-card__label" data-i18n="scenes">Scenes</div></div>
+                            <div class="stat-card"><div class="stat-card__value mono" id="statOriginal">&mdash;</div><div class="stat-card__label" data-i18n="original_duration">Original</div></div>
+                            <div class="stat-card"><div class="stat-card__value mono" id="statFinal">&mdash;</div><div class="stat-card__label" data-i18n="final_duration">Final</div></div>
+                            <div class="stat-card"><div class="stat-card__value mono" id="statSaved" style="color:var(--success)">&mdash;</div><div class="stat-card__label" data-i18n="time_saved">Saved</div></div>
+                        </div>
+
+                        <!-- Token usage -->
+                        <div class="token-info hidden" id="tokenInfo">
+                            <span data-i18n="tokens">Tokens</span>:
+                            <span><span data-i18n="token_input">Input</span> <span id="tokIn" class="mono">&mdash;</span></span>
+                            <span><span data-i18n="token_output">Output</span> <span id="tokOut" class="mono">&mdash;</span></span>
+                            <span><span data-i18n="token_total">Total</span> <span id="tokTotal" class="mono">&mdash;</span></span>
+                        </div>
+
+                        <!-- Scenes table -->
+                        <div class="table-wrap" style="margin-top:var(--space-md)">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="scene_num">#</th>
+                                        <th data-i18n="takes">Takes</th>
+                                        <th data-i18n="start">Start</th>
+                                        <th data-i18n="end">End</th>
+                                        <th data-i18n="duration">Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scenesBody"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Downloads -->
+                        <div class="download-group" style="margin-top:var(--space-lg)">
+                            <a class="btn" id="downloadXml" href="#">
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                <span data-i18n="download_xml">Download XML</span>
+                            </a>
+                            <a class="btn hidden" id="downloadSrt" href="#">
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                                <span data-i18n="download_srt">Download SRT</span>
+                            </a>
+                        </div>
+
+                        <!-- Warnings -->
+                        <div class="hidden" id="warningsBox" style="margin-top:var(--space-md)"></div>
+                    </section>
+
+                    <!-- Error State -->
+                    <section class="section hidden" id="errorState">
+                        <div style="text-align:center;padding:var(--space-xl) 0">
+                            <svg viewBox="0 0 24 24" width="48" height="48" stroke="var(--danger)" stroke-width="1.5" fill="none" style="margin-bottom:var(--space-md)">
+                                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            <h3 style="color:var(--danger);margin-bottom:var(--space-sm)" data-i18n="error_title">An error occurred</h3>
+                            <p id="errorMsg" style="font-size:0.85rem;margin-bottom:var(--space-lg)"></p>
+                            <button class="btn" id="retryBtn" data-i18n="btn_retry">Retry</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            Smart Editing v2.0 &mdash; Al Jazeera English
+        </footer>
+    </div>
+
+    <script type="module" src="js/explainer.js"></script>
+</body>
+</html>

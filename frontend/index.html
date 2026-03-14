@@ -1,392 +1,92 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Editing — مونتاج ذكي</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Smart Editing &mdash; Al Jazeera</title>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/themes.css">
 </head>
 <body>
-    <!-- Grain overlay -->
-    <div class="grain"></div>
+    <div class="app">
+        <!-- Background Logo Watermark -->
+        <div class="bg-logo" aria-hidden="true">
+            <svg viewBox="0 0 166 60" xmlns="http://www.w3.org/2000/svg">
+                <path class="bg-logo__text" d="M118.38 27.06V24h-8.2v2.63h4.22l-4.34 6.3V36h8.42v-2.65h-4.43l4.33-6.29zm29.3 1.35c-.18.23-.42.33-1 .39h-1.14v-2.4h.89l.21.02c.46.01.65.07.85.21.5.32.62 1.2.19 1.78zm2.78 3.24c-.46-1.06-.62-1.28-1.06-1.48a1 1 0 00.21-.09c1.37-.61 2.02-2.16 1.5-3.88-.42-1.42-1.53-2.2-3.64-2.2h-4.94v12h3.14v-4.49h.71c.51 0 .82.22 1.08.86l.17.38.09.22L148.9 36h3.25l-1.52-3.93c-.06-.15-.1-.28-.17-.42zm7.1-.45l1.2-3.6 1.21 3.6h-2.4zm2.92-7.2h-3.5l-4.22 12h3.18l.71-2.2h4.07l.7 2.2h3.36l-4.3-12zm-60.05 7.2l1.2-3.6 1.2 3.6h-2.4zm-.6-7.2l-4.2 12h3.17l.72-2.2h4.06l.7 2.2h3.37l-4.3-12h-3.51zm-27.66 7.2l1.2-3.6 1.2 3.6h-2.4zm-.6-7.2l-4.21 12h3.18l.71-2.2h4.07l.69 2.2h3.37l-4.3-12h-3.51zm63.3 7.37h4.16v-2.56h-4.15v-2.18h4.82V24h-8v12h8.43v-2.55h-5.25v-2.08zm-10.82 0h4.16v-2.56h-4.16v-2.18h4.83V24h-8v12h8.42v-2.55h-5.25v-2.08zm-33.22 4.1c0 1.87-.65 2.55-2.08 2.12a1.05 1.05 0 01-.24-.08l-.7 2.66c.15.08.31.15.48.22 3.34 1.3 5.53-.63 5.53-4.04V24h-3v11.47zm-2.42-2.15h-3.97V24h-3.25v12h7.22v-2.68z"/>
+                <path class="bg-logo__frame" d="M0 0h60.14v60H0z"/>
+                <path class="bg-logo__icon" d="M34.13 48.03c-.07.03-.1.16-.05.33l.33.87c.2.53.52 1.15.97 1.46.47.34.72.22.82.18.07-.04.37-.22.26-.7a2.99 2.99 0 00-.27-.85c-.1-.18-.22-.3-.3-.27-.04 0 0 .18 0 .28 0 .2-.07.33-.23.4-.14.06-.48.18-.74-.28-.22-.38-.4-.87-.49-1.08-.06-.15-.16-.34-.26-.34h-.04zm-7.47 1.38l1.59 1.32 1.54-1.87-1.59-1.32-1.54 1.87zm.35-3.26l1.59 1.31 1.55-1.86-1.6-1.32-1.54 1.87zm10.14-4.6l1.87.88 1.03-2.2-1.86-.88-1.04 2.2zM27.5 40a12.75 12.75 0 003.36 4.63c.14-.97.3-1.65.44-2.13-1.4-1-2.4-2.1-3.05-3.18l-.75.68zm3.54-2.35l1.86.88 1.04-2.2-1.87-.88-1.03 2.2zm-9-8.75s-1.17.83-1.64 1.92a2.4 2.4 0 00-.1 1.75c.16.35.55.68 1.06.28.35-.28.5-.68.58-1.01.05-.2.06-.33.06-.43 0-.12-.04-.22-.15-.2-.34.11-.14.57-.38.79-.18.1-.66.05-.75-.42-.1-.47.27-1.07.6-1.47.32-.4.9-.92.9-.92s.4-.34.27-.51l-.04-.01c-.12 0-.41.23-.41.23zM33.5 27.7l-1.44 1.57-1.24 1.35c-.27.3-.41.6-.38.76l.17.82c.04-.15.22-.43.4-.64.14-.15.8-.89 1.45-1.58l1.23-1.35c.27-.3.41-.6.38-.76l-.17-.81c-.04.15-.21.42-.4.64zM17.97 39.53c.22-.72.64-1.37 1.35-1.78 1.18-.55 1.64.86 1.64.86-.08.95-.8 1.45-1.61 1.45-.47 0-.98-.17-1.38-.53zm8.75-22.88a1.45 1.45 0 101.16 2.38l.03-.04c.17 1.16-.38 2.08-1.67 3.15-1.31 1.12-4.4 2.56-6.58 4.3a9.8 9.8 0 00-3.68 10.51 13.93 13.93 0 00.86 2.44 14.3 14.3 0 00.87 5.79c1.08 2.42 3.01 4.4 5.79 3.82 2.8-.66 3.12-5.22 3.43-8.55.09-.55.17-.65.34-.79.45-.38 1.54-1.4 2.06-1.86.32-.29.6-.57.79-.94.23-.44.1-1.02.1-1.02l-.3-2.2c-.09.31-.47.75-1 1.29-.56.56-2.05 1.84-2.19 1.98-.13.14-.61.5-.82 2.17-.54 4.55-1.43 6.7-3.04 7.43-.43.2-.9.3-1.43.3-2.95-.02-3.73-3.62-3.72-5.59 0-.12 0-.24.02-.34.68.92 1.7 1.84 2.94 1.65 2-.3 1.37-3.67 1.08-4.45-.28-.78-1.05-3.13-2.72-3.01-1.18.08-1.73 1.47-1.99 2.64a9.49 9.49 0 01-.27-2.86c.17-2.04.87-4.58 3.83-7.08 2.1-1.78 4.5-3.06 5.82-4.1a5.35 5.35 0 001.66-2.12 9.58 9.58 0 01-.57 2.27c-1.23 3.23-4.95 8.57-5 16.1 0 2.32.22 4.32.59 6.03.2-.13.39-.32.57-.53-.26-1.23-.4-2.58-.4-4.03 0-7.52 3.69-12.84 4.89-16.07.63-1.7.65-2.93.65-4.15 0-1.5-.34-3.07-.65-3.68-.34-.58-.75-.84-1.38-.84h-.07zm3.63-10.3c-.74.51-1.36 1.7-1.36 3.5 0 1.1.32 2.43 1.17 3.92-1.15 1.56-1.36 3-.87 4.38.37 1.05.56 1.32.73 1.95.42 1.6-.05 3.5-1.3 6.46-1.02 2.4-2.35 4.92-2.35 7.98 0 .7.07 1.39.17 2.06.11-.12.37-.35.67-.64-.15-2.4.8-4.81 1.98-6.98 1.7-3.17 1.92-6.39 1.59-8.15 1.2 1.28 3.22 3.2 4.4 5.16.4.66.64 1.29.7 1.93a5.04 5.04 0 01-1.39 3.76c-.8.92-.53 1.73-.5 1.9.07.25.4 1.26.63 1.91.9-1.75 3.36-2.73 4.48-4.19.25 1.8-1.1 3.5-2.1 4.64-.23.26-.5.52-.79.8-1.9 1.82-3.14 3.06-3.8 4.22-.16.26-.44.83-.57 1.27-.2.56-.44 1.5-.65 3.15a75.6 75.6 0 00-.39 2.66c-.13 1.19-.48 3.06-1.94 3.6-.07.03-.15.05-.23.06v.01c-1.39.3-2.8-.86-3.83-2.94-.22.16-.45.3-.7.42 1.4 3.3 3.5 4.81 5.33 4.81 1.4 0 2.5-.7 2.85-2.75.18-1.03.31-2.18.43-3.29.06-.53.32-3.55.8-4.65.6-1.23 1.92-2.41 3.88-4.43 1.2-1.25 1.87-2.3 2.21-3.14 1.14-2.08-.27-7.04-.55-7.94 0-.03 0-.04-.03-.04-.02 0-.03.01-.05.05l-.01.02c-.5.82-1.4 1.57-2.25 2.18.48-1.29.35-2.27.16-3.1l-.04-.15c-.85-3.29-4.21-6.22-5.73-7.9-1.98-2.2-1.3-3.6-.58-4.5l.44.63c2.69 3.64 7.74 9.41 10.4 14.91a18.44 18.44 0 011.46 4.06c1.05 5.7-2.93 11.49-8.9 9.86l-.11-.03c-.16.5-.31 1.31-.46 2.41.9.39 1.88.62 2.83.66h.21c4.9.06 8.73-3.6 8.03-11.3 0 0-.3-3.2-1.95-6.58-2.65-5.92-7.56-11.78-10.57-15.57a10.04 10.04 0 01-1.8-3.14c-.56-1.75-.2-3.11.52-3.7.16-.13.35-.28.53-.37.1-.06.06-.18-.01-.2h-.07c-.1 0-.3.05-.72.34zm-5.5 12.8c-.8.02-1.44.69-1.41 1.5a1.45 1.45 0 102.9-.1 1.45 1.45 0 00-1.45-1.4h-.05z"/>
+            </svg>
+        </div>
 
-    <!-- Ambient background -->
-    <div class="ambient-bg">
-        <div class="ambient-orb ambient-orb--1"></div>
-        <div class="ambient-orb ambient-orb--2"></div>
-        <div class="ambient-orb ambient-orb--3"></div>
-    </div>
-
-    <div class="app-shell">
-        <!-- Top bar -->
-        <header class="topbar">
-            <div class="topbar__brand">
-                <div class="brand-mark">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                        <rect x="2" y="2" width="10" height="10" rx="2" fill="var(--accent)"/>
-                        <rect x="16" y="2" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.5"/>
-                        <rect x="2" y="16" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.3"/>
-                        <rect x="16" y="16" width="10" height="10" rx="2" fill="var(--accent)" opacity="0.7"/>
-                    </svg>
-                </div>
-                <div class="brand-text">
-                    <span class="brand-name">Smart Editing</span>
-                    <span class="brand-version">v1.0</span>
-                </div>
+        <!-- Header -->
+        <header class="header anim-fade-in">
+            <div class="header__left">
+                <img src="assets/logo.png" alt="Al Jazeera" class="header__logo" onerror="this.style.display='none'">
+                <div class="header__divider"></div>
+                <span class="header__title" data-i18n="brand_subtitle">Smart Editing</span>
             </div>
-            <div class="topbar__status" id="statusIndicator">
-                <span class="status-dot"></span>
-                <span class="status-text">جاهز</span>
+            <div class="header__right">
+                <button class="icon-btn" id="langToggle" title="AR / EN">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </button>
+                <button class="icon-btn" id="themeToggle" title="Toggle theme">
+                    <svg viewBox="0 0 24 24" id="themeIcon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
             </div>
         </header>
 
-        <!-- Main content -->
-        <main class="workspace">
-            <!-- Left panel: Upload & Settings -->
-            <section class="panel panel--input" id="inputPanel">
-                <div class="panel__header">
-                    <h2 class="panel__title">الملفات والإعدادات</h2>
-                    <span class="panel__badge">01</span>
-                </div>
+        <!-- Main -->
+        <main class="main">
+            <div class="anim-fade-up" style="text-align: center; margin-bottom: var(--space-4xl);">
+                <h1 style="margin-bottom: var(--space-sm);" data-i18n="landing_title">Smart Editing</h1>
+                <p style="font-size: 1.05rem;" data-i18n="landing_subtitle">Smart editing services for reporters</p>
+            </div>
 
-                <div class="panel__body">
-                    <!-- Video upload -->
-                    <div class="upload-zone" id="videoZone" data-accept="video/*">
-                        <div class="upload-zone__inner">
-                            <div class="upload-zone__icon">
-                                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                                    <path d="M8 12C8 9.79 9.79 8 12 8H28C30.21 8 32 9.79 32 12V28C32 30.21 30.21 32 28 32H12C9.79 32 8 30.21 8 28V12Z" stroke="currentColor" stroke-width="1.5"/>
-                                    <path d="M17 15L25 20L17 25V15Z" fill="currentColor" opacity="0.4"/>
-                                </svg>
-                            </div>
-                            <div class="upload-zone__text">
-                                <strong>ملف الفيديو</strong>
-                                <span>اسحب الملف هنا أو اضغط للاختيار</span>
-                            </div>
-                            <div class="upload-zone__file" id="videoFileName"></div>
-                        </div>
-                        <input type="file" id="videoInput" accept="video/*" hidden>
+            <div class="services-grid">
+                <a href="explainer.html" class="service-card anim-fade-up delay-2">
+                    <div class="service-card__icon">
+                        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M10 8l6 4-6 4V8z"/></svg>
                     </div>
-
-                    <!-- Script upload (optional) -->
-                    <div class="upload-zone upload-zone--small" id="scriptZone" data-accept=".docx,.xlsx,.csv,.txt">
-                        <div class="upload-zone__inner">
-                            <div class="upload-zone__icon">
-                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                                    <path d="M8 6C8 4.9 8.9 4 10 4H18L24 10V26C24 27.1 23.1 28 22 28H10C8.9 28 8 27.1 8 26V6Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                                    <path d="M18 4V10H24" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                                    <path d="M12 16H20M12 20H18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                            <div class="upload-zone__text">
-                                <strong>السكريبت <span class="optional-badge">اختياري</span></strong>
-                                <span>docx, xlsx, csv, txt</span>
-                            </div>
-                            <div class="upload-zone__file" id="scriptFileName"></div>
-                        </div>
-                        <input type="file" id="scriptInput" accept=".docx,.xlsx,.csv,.txt" hidden>
+                    <h3 class="service-card__title" data-i18n="service_explainer">Explainer</h3>
+                    <p class="service-card__desc" data-i18n="service_explainer_desc">Auto-process reporter recordings and generate edit-ready timeline with B-Roll & Sound Bites</p>
+                    <div class="service-card__arrow">
+                        <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                     </div>
-
-                    <!-- B-Roll divider -->
-                    <div class="divider">
-                        <span class="divider__label">بي رول <span class="optional-badge">اختياري</span></span>
-                    </div>
-
-                    <!-- B-Roll video files upload (multiple) -->
-                    <div class="upload-zone upload-zone--small" id="brollZone">
-                        <div class="upload-zone__inner">
-                            <div class="upload-zone__icon">
-                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                                    <rect x="4" y="4" width="24" height="24" rx="4" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                                    <path d="M4 20L11 13L16 18L21 13L28 20" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                                </svg>
-                            </div>
-                            <div class="upload-zone__text">
-                                <strong>ملفات البي رول <span class="optional-badge">اختياري</span></strong>
-                                <span>اختر ملف أو أكثر</span>
-                            </div>
-                            <div class="upload-zone__file" id="brollFileNames"></div>
-                        </div>
-                        <input type="file" id="brollInput" accept="video/*" multiple hidden>
-                    </div>
-
-                    <!-- B-Roll instructions file -->
-                    <div class="upload-zone upload-zone--small" id="brollInstructionsZone">
-                        <div class="upload-zone__inner">
-                            <div class="upload-zone__icon">
-                                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                                    <path d="M8 6C8 4.9 8.9 4 10 4H18L24 10V26C24 27.1 23.1 28 22 28H10C8.9 28 8 27.1 8 26V6Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                                    <path d="M18 4V10H24" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                                    <path d="M12 16H20M12 20H18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-                            <div class="upload-zone__text">
-                                <strong>ملف تعليمات البي رول <span class="optional-badge">اختياري</span></strong>
-                                <span>ملف نصي يحدد أماكن البي رول</span>
-                            </div>
-                            <div class="upload-zone__file" id="brollInstructionsFileName"></div>
-                        </div>
-                        <input type="file" id="brollInstructionsInput" accept=".txt" hidden>
-                    </div>
-
-                    <!-- Settings Divider -->
-                    <div class="divider">
-                        <span class="divider__label">الإعدادات</span>
-                    </div>
-
-                    <!-- Settings -->
-                    <div class="settings-grid">
-                        <!-- Silence duration -->
-                        <div class="setting">
-                            <div class="setting__header">
-                                <label class="setting__label">الحد الأدنى للسكتة</label>
-                                <output class="setting__value" id="silenceValue">0.5 ث</output>
-                            </div>
-                            <input type="range" class="slider" id="silenceSlider"
-                                   min="300" max="5000" value="500" step="100">
-                            <div class="slider-range">
-                                <span>0.3 ث</span>
-                                <span>5.0 ث</span>
-                            </div>
-                        </div>
-
-                        <!-- Padding -->
-                        <div class="setting">
-                            <div class="setting__header">
-                                <label class="setting__label">هامش الصمت</label>
-                                <output class="setting__value" id="paddingValue">150 مل/ث</output>
-                            </div>
-                            <input type="range" class="slider" id="paddingSlider"
-                                   min="0" max="750" value="150" step="25">
-                            <div class="slider-range">
-                                <span>0</span>
-                                <span>750 مل/ث</span>
-                            </div>
-                        </div>
-
-                        <!-- Gemini API Key -->
-                        <div class="setting">
-                            <label class="setting__label">مفتاح Gemini API</label>
-                            <div class="api-key-wrap">
-                                <input type="password" class="api-key-input" id="geminiApiKey"
-                                       placeholder="أدخل مفتاح Google Gemini API..."
-                                       dir="ltr" autocomplete="off">
-                                <button type="button" class="api-key-toggle" id="apiKeyToggle" title="إظهار/إخفاء">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                        <path d="M8 3C4.5 3 1.5 5.5 1 8C1.5 10.5 4.5 13 8 13C11.5 13 14.5 10.5 15 8C14.5 5.5 11.5 3 8 3Z" stroke="currentColor" stroke-width="1.2"/>
-                                        <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.2"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Language -->
-                        <div class="setting">
-                            <label class="setting__label">لغة الكلام</label>
-                            <div class="select-wrap">
-                                <select id="languageSelect" class="select">
-                                    <option value="">كشف تلقائي</option>
-                                    <option value="ar">عربي</option>
-                                    <option value="en">إنجليزي</option>
-                                </select>
-                                <svg class="select-arrow" width="12" height="12" viewBox="0 0 12 12"><path d="M3 5L6 8L9 5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <!-- Process button -->
-                    <button class="btn-process" id="processBtn" disabled>
-                        <span class="btn-process__text">ابدأ المعالجة</span>
-                        <span class="btn-process__icon">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                                <path d="M7 4L15 10L7 16V4Z" fill="currentColor"/>
-                            </svg>
-                        </span>
-                    </button>
-                </div>
-            </section>
-
-            <!-- Right panel: Progress & Results -->
-            <section class="panel panel--output" id="outputPanel">
-                <div class="panel__header">
-                    <h2 class="panel__title">النتائج</h2>
-                    <span class="panel__badge">02</span>
-                </div>
-
-                <div class="panel__body">
-                    <!-- Empty state -->
-                    <div class="empty-state" id="emptyState">
-                        <div class="empty-state__visual">
-                            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                                <circle cx="40" cy="40" r="30" stroke="var(--surface-3)" stroke-width="1" stroke-dasharray="4 4"/>
-                                <path d="M35 30L50 40L35 50V30Z" stroke="var(--surface-3)" stroke-width="1.5" fill="none"/>
-                            </svg>
-                        </div>
-                        <p class="empty-state__text">ارفع الفيديو<br>ثم اضغط "ابدأ المعالجة"</p>
-                    </div>
-
-                    <!-- Processing state -->
-                    <div class="processing-state hidden" id="processingState">
-                        <div class="processing-visual">
-                            <div class="processing-ring">
-                                <svg width="120" height="120" viewBox="0 0 120 120">
-                                    <circle cx="60" cy="60" r="52" stroke="var(--surface-3)" stroke-width="2" fill="none"/>
-                                    <circle cx="60" cy="60" r="52" stroke="var(--accent)" stroke-width="2.5" fill="none"
-                                            stroke-dasharray="327" stroke-dashoffset="250" stroke-linecap="round"
-                                            class="processing-ring__progress"/>
-                                </svg>
-                                <div class="processing-ring__label">
-                                    <span class="processing-step" id="processingStep">النسخ الصوتي</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="processing-steps">
-                            <div class="step" data-step="1">
-                                <div class="step__indicator"></div>
-                                <span>استخراج الصوت</span>
-                            </div>
-                            <div class="step" data-step="2">
-                                <div class="step__indicator"></div>
-                                <span>النسخ الصوتي</span>
-                            </div>
-                            <div class="step" data-step="3">
-                                <div class="step__indicator"></div>
-                                <span>تحليل Gemini AI</span>
-                            </div>
-                            <div class="step" data-step="4">
-                                <div class="step__indicator"></div>
-                                <span>حذف السكتات</span>
-                            </div>
-                            <div class="step" data-step="5">
-                                <div class="step__indicator"></div>
-                                <span>توليد الملف</span>
-                            </div>
-                            <div class="step hidden" data-step="6" id="brollStep">
-                                <div class="step__indicator"></div>
-                                <span>إضافة البي رول</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Results state -->
-                    <div class="results-state hidden" id="resultsState">
-                        <!-- Stats row -->
-                        <div class="stats-row">
-                            <div class="stat-card">
-                                <span class="stat-card__label">المشاهد</span>
-                                <span class="stat-card__value" id="statScenes">—</span>
-                            </div>
-                            <div class="stat-card">
-                                <span class="stat-card__label">المدة الأصلية</span>
-                                <span class="stat-card__value" id="statOriginal">—</span>
-                            </div>
-                            <div class="stat-card">
-                                <span class="stat-card__label">المدة النهائية</span>
-                                <span class="stat-card__value stat-card__value--accent" id="statFinal">—</span>
-                            </div>
-                            <div class="stat-card">
-                                <span class="stat-card__label">التوفير</span>
-                                <span class="stat-card__value stat-card__value--green" id="statSaved">—</span>
-                            </div>
-                        </div>
-
-                        <!-- Token usage -->
-                        <div class="token-usage hidden" id="tokenUsage">
-                            <div class="token-usage__icon">
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                    <path d="M8 1L10 6H15L11 9.5L12.5 15L8 11.5L3.5 15L5 9.5L1 6H6L8 1Z" stroke="currentColor" stroke-width="1.2" fill="none"/>
-                                </svg>
-                            </div>
-                            <span class="token-usage__label">Gemini Tokens:</span>
-                            <span class="token-usage__detail">إدخال <strong id="tokenInput">—</strong></span>
-                            <span class="token-usage__sep">|</span>
-                            <span class="token-usage__detail">إخراج <strong id="tokenOutput">—</strong></span>
-                            <span class="token-usage__sep">|</span>
-                            <span class="token-usage__detail">المجموع <strong id="tokenTotal">—</strong></span>
-                        </div>
-
-                        <!-- Scenes table -->
-                        <div class="table-wrap">
-                            <table class="shots-table">
-                                <thead>
-                                    <tr>
-                                        <th>المشهد</th>
-                                        <th>عدد التيكات</th>
-                                        <th>البداية</th>
-                                        <th>النهاية</th>
-                                        <th>المدة</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="scenesTableBody">
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Download buttons -->
-                        <div class="download-buttons">
-                            <a class="btn-download" id="downloadBtn" href="#" download>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                                    <path d="M10 3V13M10 13L6 9M10 13L14 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                    <path d="M3 15V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                </svg>
-                                <span>تحميل XML — التايملاين</span>
-                            </a>
-                            <a class="btn-download btn-download--srt" id="srtDownloadBtn" href="#" download>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                                    <path d="M10 3V13M10 13L6 9M10 13L14 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                    <path d="M3 15V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                </svg>
-                                <span>تحميل SRT — الترانسكربشن</span>
-                            </a>
-                        </div>
-
-                        <p class="import-hint">File → Import في Premiere Pro لاستيراد الملفين — XML للتايملاين و SRT للنصوص</p>
-
-                        <!-- B-Roll Results (shown only when B-Roll was processed) -->
-                        <div class="broll-results hidden" id="brollResults">
-                            <div class="divider" style="margin-top: 8px;">
-                                <span class="divider__label">بي رول</span>
-                            </div>
-                            <div class="broll-success">
-                                <span id="brollCount"></span>
-                            </div>
-                            <div class="broll-warnings hidden" id="brollWarnings"></div>
-                            <a class="btn-download" id="brollDownloadBtn" href="#" download>
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                                    <path d="M10 3V13M10 13L6 9M10 13L14 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                    <path d="M3 15V16C3 16.55 3.45 17 4 17H16C16.55 17 17 16.55 17 16V15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                                </svg>
-                                <span>تحميل XML — التايملاين مع البي رول</span>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Error state -->
-                    <div class="error-state hidden" id="errorState">
-                        <div class="error-state__icon">
-                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                                <circle cx="24" cy="24" r="20" stroke="var(--danger)" stroke-width="1.5"/>
-                                <path d="M24 16V28" stroke="var(--danger)" stroke-width="2" stroke-linecap="round"/>
-                                <circle cx="24" cy="33" r="1.5" fill="var(--danger)"/>
-                            </svg>
-                        </div>
-                        <p class="error-state__message" id="errorMessage">حدث خطأ</p>
-                        <button class="btn-retry" id="retryBtn">إعادة المحاولة</button>
-                    </div>
-                </div>
-            </section>
+                </a>
+            </div>
         </main>
 
-        <!-- Footer -->
-        <footer class="bottombar">
-            <span class="bottombar__hint">استورد ملف XML في Premiere Pro عبر File → Import</span>
+        <footer class="footer anim-fade-in delay-4">
+            Smart Editing v2.0 &mdash; Al Jazeera English
         </footer>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module">
+        import { initI18n, setLang, getLang } from './js/i18n.js';
+
+        const theme = localStorage.getItem('smart-edit-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('smart-edit-theme', next);
+            const icon = document.getElementById('themeIcon');
+            icon.innerHTML = next === 'light'
+                ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+                : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+        });
+
+        document.getElementById('langToggle').addEventListener('click', () => {
+            setLang(getLang() === 'en' ? 'ar' : 'en');
+        });
+
+        initI18n();
+    </script>
 </body>
 </html>

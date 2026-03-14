@@ -1,0 +1,53 @@
+/* ============================================
+   Theme - Dark (default) & Light overrides
+   ============================================ */
+
+/* Dark mode is default via :root in variables.css */
+
+/* Light mode adjustments beyond variables */
+[data-theme="light"] body::after {
+    opacity: 0.008;
+}
+
+[data-theme="light"] .upload-zone {
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .upload-zone:hover,
+[data-theme="light"] .upload-zone.dragover {
+    border-color: rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="light"] .upload-zone.has-file {
+    border-color: var(--success);
+    background: rgba(74, 222, 128, 0.06);
+}
+
+[data-theme="light"] input[type="range"] {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] input[type="range"]::-webkit-slider-thumb {
+    background: var(--text-primary);
+}
+
+[data-theme="light"] select.input-field {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(0,0,0,0.4)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+[data-theme="light"] .spinner__ring {
+    border-color: rgba(0, 0, 0, 0.1);
+    border-top-color: var(--text-primary);
+}
+
+[data-theme="light"] .step--active .step__dot {
+    box-shadow: 0 0 12px rgba(26, 10, 46, 0.2);
+}
+
+[data-theme="light"] .header {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .footer {
+    border-top-color: rgba(0, 0, 0, 0.06);
+}

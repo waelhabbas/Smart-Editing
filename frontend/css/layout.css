@@ -1,0 +1,194 @@
+/* ============================================
+   Layout - App Shell, Grid, Responsive
+   ============================================ */
+
+.app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.app > *:not(.bg-logo) {
+    position: relative;
+    z-index: 1;
+}
+
+/* === Header === */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: var(--space-md) var(--space-xl);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    background: rgba(13, 4, 24, 0.6);
+    border-bottom: 1px solid var(--surface-border);
+    transition: background var(--duration-normal) var(--ease-out);
+}
+
+[data-theme="light"] .header {
+    background: rgba(248, 244, 255, 0.7);
+}
+
+.header__left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.header__logo {
+    height: 36px;
+    width: auto;
+    opacity: 0.95;
+    transition: opacity var(--duration-fast);
+}
+.header__logo:hover { opacity: 1; }
+
+.header__divider {
+    width: 1px;
+    height: 20px;
+    background: var(--surface-border);
+}
+
+.header__title {
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.header__right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+/* === Main Content === */
+.main {
+    flex: 1;
+    padding: var(--space-2xl) var(--space-xl);
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* === Landing Grid === */
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-xl);
+    margin-top: var(--space-2xl);
+}
+
+/* === Two-Column Workflow Layout === */
+.workflow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    align-items: start;
+}
+
+.workflow__input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.workflow__output {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    position: sticky;
+    top: 100px;
+}
+
+/* === Section === */
+.section {
+    background: var(--surface-glass);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+    transition: border-color var(--duration-normal) var(--ease-out),
+                background var(--duration-normal) var(--ease-out);
+}
+
+.section:hover {
+    border-color: var(--surface-border-hover);
+}
+
+.section__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+}
+
+.section__title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.section__badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    background: var(--surface-glass);
+    border: 1px solid var(--surface-border);
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* === Footer === */
+.footer {
+    padding: var(--space-xl);
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    border-top: 1px solid var(--surface-border);
+}
+
+/* === Responsive === */
+@media (max-width: 1024px) {
+    .workflow {
+        grid-template-columns: 1fr;
+    }
+    .workflow__output {
+        position: static;
+    }
+    .main {
+        padding: var(--space-xl) var(--space-md);
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: var(--space-sm) var(--space-md);
+    }
+    .header__title {
+        display: none;
+    }
+    .main {
+        padding: var(--space-lg) var(--space-md);
+    }
+    .section {
+        padding: var(--space-lg);
+        border-radius: var(--radius-lg);
+    }
+    h1 { font-size: 1.75rem; }
+    h2 { font-size: 1.35rem; }
+    .services-grid {
+        grid-template-columns: 1fr;
+    }
+}
