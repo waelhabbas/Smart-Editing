@@ -23,8 +23,6 @@ class ExplainerService(BaseService):
         csv_file: UploadFile,
         api_key: str,
         language: str | None = None,
-        min_silence_ms: int = 500,
-        silence_padding_ms: int = 150,
     ) -> dict:
         """
         Step 1: Upload video + CSV -> process base timeline.
@@ -35,14 +33,14 @@ class ExplainerService(BaseService):
         3. Transcribe with Whisper (word-level timestamps)
         4. Send to Gemini to select best take per shot
         5. Build base timeline clips from selected takes
-        6. Remove silences from selected clips
+        6. Split clips at word gaps (using WhisperX word timestamps)
         7. Compute timeline positions
         8. Generate base FCP7 XML (V1 + A1)
         9. Save job metadata
         """
         from backend.pipeline.csv_parser import parse_csv_template
         from backend.pipeline.transcriber import transcribe, extract_audio
-        from backend.pipeline.silence_remover import detect_silences, remove_silences_from_segments
+        from backend.pipeline.silence_remover import split_clips_on_word_gaps
         from backend.pipeline.gemini_analyzer import analyze_with_gemini
         from backend.pipeline.timeline_builder import build_base_timeline, compute_timeline_positions, validate_and_fix_clips
         from backend.pipeline.xml_generator import generate_base_xml, get_video_info
@@ -83,13 +81,7 @@ class ExplainerService(BaseService):
                 raise HTTPException(400, "No speech detected in video")
             log.info("Job %s: got %d segments", job_id, len(segments))
 
-            # 4. Detect silences
-            log.info("Job %s: detecting silences...", job_id)
-            silences = await asyncio.to_thread(
-                detect_silences, audio_path, min_silence_ms, -40
-            )
-
-            # 5. Gemini AI analysis - select best takes
+            # 4. Gemini AI analysis - select best takes
             log.info("Job %s: sending to Gemini AI...", job_id)
             gemini_result = await asyncio.to_thread(
                 analyze_with_gemini, segments, csv_shots, api_key, language
@@ -98,10 +90,10 @@ class ExplainerService(BaseService):
             if not scenes:
                 raise HTTPException(400, "No scenes detected in video")
 
-            # 6. Build base timeline from selected takes
+            # 5. Build base timeline from selected takes
             selected_clips = gemini_result["selected_clips"]
 
-            # 6b. Validate and fix clip ordering (overlaps, reversals)
+            # 5b. Validate and fix clip ordering (overlaps, reversals)
             from backend.config import MIN_CLIP_DURATION_SEC
             validation = validate_and_fix_clips(selected_clips, MIN_CLIP_DURATION_SEC)
             selected_clips = validation["clips"]
@@ -109,15 +101,13 @@ class ExplainerService(BaseService):
             if clip_fixes:
                 log.warning("Job %s: %d clip fixes applied", job_id, len(clip_fixes))
 
-            # 7. Remove silences
-            final_clips = remove_silences_from_segments(
-                selected_clips, silences, padding_ms=silence_padding_ms
-            )
+            # 6. Split clips at word gaps (using WhisperX word timestamps)
+            final_clips = split_clips_on_word_gaps(selected_clips, segments)
 
-            # 8. Get video info (needed for timebase before position computation)
+            # 7. Get video info (needed for timebase before position computation)
             video_info = await asyncio.to_thread(get_video_info, video_path)
 
-            # 9. Compute timeline positions (with frame positions for soundbite alignment)
+            # 8. Compute timeline positions (with frame positions for soundbite alignment)
             compute_timeline_positions(final_clips, timebase=video_info["timebase"])
             xml_filename = f"{job_id}_base.xml"
             xml_path = str(OUTPUT_DIR / xml_filename)
@@ -127,7 +117,7 @@ class ExplainerService(BaseService):
                 generate_base_xml, video_path, final_clips, xml_path, video_info
             )
 
-            # 10. Save metadata for Step 2
+            # 9. Save metadata for Step 2
             metadata = {
                 "job_id": job_id,
                 "video_path": video_path,

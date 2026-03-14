@@ -42,12 +42,6 @@ const dom = {
     step2Btn:  $('#step2Btn'),
     retryBtn:  $('#retryBtn'),
 
-    // Sliders
-    silenceSlider: $('#silenceSlider'),
-    paddingSlider: $('#paddingSlider'),
-    silenceVal:    $('#silenceVal'),
-    paddingVal:    $('#paddingVal'),
-
     // Settings
     apiKeyInput: $('#apiKeyInput'),
     langSelect:  $('#langSelect'),
@@ -199,15 +193,6 @@ wireUpload(dom.transitionZone, dom.transitionInput, (file) => {
     dom.transitionZone.classList.add('has-file');
 });
 
-// ── Sliders ────────────────────────────────────────────────────────────
-dom.silenceSlider.addEventListener('input', () => {
-    dom.silenceVal.textContent = `${dom.silenceSlider.value}ms`;
-});
-
-dom.paddingSlider.addEventListener('input', () => {
-    dom.paddingVal.textContent = `${dom.paddingSlider.value}ms`;
-});
-
 // ── Step 1: Process ────────────────────────────────────────────────────
 dom.step1Btn.addEventListener('click', async () => {
     if (!videoFile || !csvFile) return;
@@ -224,9 +209,6 @@ dom.step1Btn.addEventListener('click', async () => {
     const fd = new FormData();
     fd.append('video', videoFile);
     fd.append('csv_file', csvFile);
-    fd.append('min_silence_ms', dom.silenceSlider.value);
-    fd.append('silence_padding_ms', dom.paddingSlider.value);
-
     const apiKey = dom.apiKeyInput.value.trim();
     if (apiKey) fd.append('gemini_api_key', apiKey);
 
@@ -234,7 +216,7 @@ dom.step1Btn.addEventListener('click', async () => {
     if (lang) fd.append('language', lang);
 
     // Animate processing steps
-    const steps = ['audio', 'transcribe', 'gemini', 'silence', 'xml'];
+    const steps = ['audio', 'transcribe', 'gemini', 'gaps', 'xml'];
     let stepIdx = 0;
 
     const stepInterval = setInterval(() => {

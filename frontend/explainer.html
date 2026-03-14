@@ -77,20 +77,6 @@
                         <details style="margin-top:var(--space-lg)">
                             <summary style="cursor:pointer;color:var(--text-tertiary);font-size:0.85rem;font-weight:500" data-i18n="settings">Settings</summary>
                             <div class="settings-grid" style="margin-top:var(--space-md)">
-                                <div class="slider-group">
-                                    <div class="slider-group__header">
-                                        <span class="slider-group__label" data-i18n="silence_min">Min silence</span>
-                                        <span class="slider-group__value" id="silenceVal">500ms</span>
-                                    </div>
-                                    <input type="range" id="silenceSlider" min="300" max="5000" value="500" step="100">
-                                </div>
-                                <div class="slider-group">
-                                    <div class="slider-group__header">
-                                        <span class="slider-group__label" data-i18n="silence_padding">Silence padding</span>
-                                        <span class="slider-group__value" id="paddingVal">150ms</span>
-                                    </div>
-                                    <input type="range" id="paddingSlider" min="0" max="750" value="150" step="25">
-                                </div>
                                 <div class="input-group">
                                     <label class="input-group__label" data-i18n="api_key">Gemini API Key</label>
                                     <input type="password" class="input-field" id="apiKeyInput" data-i18n="api_key_placeholder" dir="ltr" autocomplete="off">
@@ -200,7 +186,7 @@
                             <div class="step" data-step="audio"><span class="step__dot"></span><span data-i18n="step_audio">Extracting audio</span></div>
                             <div class="step" data-step="transcribe"><span class="step__dot"></span><span data-i18n="step_transcribe">Transcribing</span></div>
                             <div class="step" data-step="gemini"><span class="step__dot"></span><span data-i18n="step_gemini">Gemini AI analysis</span></div>
-                            <div class="step" data-step="silence"><span class="step__dot"></span><span data-i18n="step_silence">Removing silence</span></div>
+                            <div class="step" data-step="gaps"><span class="step__dot"></span><span data-i18n="step_gaps">Trimming gaps</span></div>
                             <div class="step" data-step="xml"><span class="step__dot"></span><span data-i18n="step_xml">Generating XML</span></div>
                         </div>
                     </section>

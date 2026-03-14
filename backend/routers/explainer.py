@@ -22,8 +22,6 @@ async def process_step1(
     csv_file: UploadFile = File(...),
     gemini_api_key: str = Form(default=""),
     language: str = Form(default=""),
-    min_silence_ms: int = Form(default=500),
-    silence_padding_ms: int = Form(default=150),
 ):
     """Step 1: Upload video + CSV template -> process base timeline."""
     api_key = gemini_api_key or GEMINI_API_KEY
@@ -35,8 +33,6 @@ async def process_step1(
         csv_file=csv_file,
         api_key=api_key,
         language=language or None,
-        min_silence_ms=min_silence_ms,
-        silence_padding_ms=silence_padding_ms,
     )
     return JSONResponse(result)
 

@@ -175,10 +175,26 @@ def _parse_response(response_text: str, segments: list[dict], csv_shots: list[di
             take_segments = segments[start_idx:end_idx + 1]
             combined_text = " ".join(s["text"] for s in take_segments)
 
+            # Use word-level boundaries for tighter clips
+            all_words = [
+                w for seg in take_segments
+                for w in seg.get("words", [])
+                if w.get("start") is not None and w.get("end") is not None
+            ]
+
+            if all_words:
+                take_start = all_words[0]["start"]
+                take_end = all_words[-1]["end"]
+            else:
+                take_start = take_segments[0]["start"]
+                take_end = take_segments[-1]["end"]
+
             takes.append({
-                "start": take_segments[0]["start"],
-                "end": take_segments[-1]["end"],
+                "start": take_start,
+                "end": take_end,
                 "text": combined_text,
+                "start_segment_index": start_idx,
+                "end_segment_index": end_idx,
             })
 
         if not takes:
@@ -207,6 +223,8 @@ def _parse_response(response_text: str, segments: list[dict], csv_shots: list[di
             "end": selected["end"],
             "shot_number": scene_num,
             "text": canonical_text,
+            "start_segment_index": selected.get("start_segment_index"),
+            "end_segment_index": selected.get("end_segment_index"),
         })
 
     return {

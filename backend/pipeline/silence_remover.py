@@ -1,108 +1,127 @@
 """
-Detect and remove silence periods from audio/video segments.
-Uses pydub for audio analysis.
+Split clips at word gaps using WhisperX word-level timestamps.
+Replaces pydub-based silence detection with precise word boundary analysis.
 """
 
-from pydub import AudioSegment
-from pydub.silence import detect_silence
+import logging
+
+log = logging.getLogger(__name__)
 
 
-def detect_silences(
-    audio_path: str,
-    min_silence_ms: int = 500,
-    silence_thresh_db: int = -40,
-) -> list[dict]:
-    """
-    Detect silence periods in an audio file.
-
-    Args:
-        audio_path: Path to audio file (wav/mp3).
-        min_silence_ms: Minimum silence duration in milliseconds to detect.
-        silence_thresh_db: Silence threshold in dBFS.
-
-    Returns:
-        List of dicts: [{"start": float, "end": float}, ...] in seconds.
-    """
-    audio = AudioSegment.from_file(audio_path)
-
-    # detect_silence returns list of [start_ms, end_ms]
-    silent_ranges = detect_silence(
-        audio,
-        min_silence_len=min_silence_ms,
-        silence_thresh=silence_thresh_db,
-    )
-
-    return [
-        {"start": start / 1000.0, "end": end / 1000.0}
-        for start, end in silent_ranges
-    ]
-
-
-def remove_silences_from_segments(
+def _collect_words_in_range(
     segments: list[dict],
-    silences: list[dict],
-    padding_ms: int = 150,
+    start: float,
+    end: float,
+    seg_start_idx: int | None = None,
+    seg_end_idx: int | None = None,
 ) -> list[dict]:
     """
-    Remove silence periods from a list of timeline segments.
+    Collect all words from segments whose midpoint falls within [start, end].
 
-    Each segment has {"start": float, "end": float} in seconds.
-    Silences are subtracted from segments, splitting them if needed.
+    If seg_start_idx and seg_end_idx are provided, only search those segments.
+    """
+    words = []
+
+    if seg_start_idx is not None and seg_end_idx is not None:
+        search_segments = segments[seg_start_idx:seg_end_idx + 1]
+    else:
+        search_segments = segments
+
+    for seg in search_segments:
+        for w in seg.get("words", []):
+            w_start = w.get("start")
+            w_end = w.get("end")
+            if w_start is None or w_end is None:
+                continue
+            mid = (w_start + w_end) / 2.0
+            if start <= mid <= end:
+                words.append(w)
+
+    words.sort(key=lambda w: w["start"])
+    return words
+
+
+def split_clips_on_word_gaps(
+    clips: list[dict],
+    segments: list[dict],
+    gap_threshold_ms: int = 500,
+    pad_before_ms: int = 50,
+    pad_after_ms: int = 50,
+) -> list[dict]:
+    """
+    Split clips at large gaps between words.
+
+    Uses WhisperX word-level timestamps to identify pauses/hesitations
+    within each clip and splits the clip into sub-clips around them.
 
     Args:
-        segments: List of clip segments on the timeline.
-        silences: List of detected silence periods.
-        padding_ms: Keep this much silence at edges (milliseconds).
+        clips: Selected take clips with start, end, shot_number, text.
+        segments: Full WhisperX transcription segments with words[].
+        gap_threshold_ms: Minimum gap between consecutive words (ms)
+            to trigger a split. Default 500ms.
+        pad_before_ms: Padding before first word of each sub-clip (ms).
+        pad_after_ms: Padding after last word of each sub-clip (ms).
 
     Returns:
-        New list of segments with silences removed.
+        New list of clips with gaps removed.
     """
-    padding = padding_ms / 1000.0
+    gap_threshold = gap_threshold_ms / 1000.0
+    pad_before = pad_before_ms / 1000.0
+    pad_after = pad_after_ms / 1000.0
+
     result = []
 
-    for seg in segments:
-        # Collect silences that overlap with this segment
-        relevant_silences = []
-        for sil in silences:
-            # Add padding: shrink silence boundaries
-            sil_start = sil["start"] + padding
-            sil_end = sil["end"] - padding
-            if sil_start >= sil_end:
-                continue  # padding eliminated this silence
+    for clip in clips:
+        words = _collect_words_in_range(
+            segments,
+            clip["start"],
+            clip["end"],
+            clip.get("start_segment_index"),
+            clip.get("end_segment_index"),
+        )
 
-            # Check overlap with segment
-            if sil_start < seg["end"] and sil_end > seg["start"]:
-                relevant_silences.append({
-                    "start": max(sil_start, seg["start"]),
-                    "end": min(sil_end, seg["end"]),
-                })
-
-        if not relevant_silences:
-            result.append(seg.copy())
+        if not words:
+            result.append(clip.copy())
+            log.warning(
+                "Shot %s: no words in [%.2f, %.2f], keeping original clip",
+                clip.get("shot_number"), clip["start"], clip["end"],
+            )
             continue
 
-        # Sort silences by start time
-        relevant_silences.sort(key=lambda s: s["start"])
+        # Group words by detecting gaps > threshold
+        groups = []
+        current_group = [words[0]]
 
-        # Split segment around silences
-        current_start = seg["start"]
-        for sil in relevant_silences:
-            if current_start < sil["start"]:
-                result.append({
-                    "start": current_start,
-                    "end": sil["start"],
-                    "shot_number": seg.get("shot_number"),
-                    "text": seg.get("text"),
-                })
-            current_start = sil["end"]
+        for i in range(1, len(words)):
+            gap = words[i]["start"] - words[i - 1]["end"]
+            if gap > gap_threshold:
+                groups.append(current_group)
+                current_group = [words[i]]
+            else:
+                current_group.append(words[i])
 
-        # Remaining part after last silence
-        if current_start < seg["end"]:
+        groups.append(current_group)
+
+        # Convert word groups to sub-clips
+        for group in groups:
+            sub_start = max(clip["start"], group[0]["start"] - pad_before)
+            sub_end = min(clip["end"], group[-1]["end"] + pad_after)
+
+            if sub_end - sub_start < 0.1:
+                continue
+
             result.append({
-                "start": current_start,
-                "end": seg["end"],
-                "shot_number": seg.get("shot_number"),
-                "text": seg.get("text"),
+                "start": sub_start,
+                "end": sub_end,
+                "shot_number": clip.get("shot_number"),
+                "text": clip.get("text"),
             })
+
+        if len(groups) > 1:
+            log.info(
+                "Shot %s: split into %d sub-clips (removed %d gap(s) > %dms)",
+                clip.get("shot_number"), len(groups),
+                len(groups) - 1, gap_threshold_ms,
+            )
 
     return result

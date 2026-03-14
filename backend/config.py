@@ -23,10 +23,8 @@ WHISPER_MODEL = "large-v3"
 WHISPERX_BATCH_SIZE = 16              # reduce if low on GPU memory
 WHISPERX_FALLBACK_TO_NATIVE = True    # fall back to native word timestamps if alignment fails
 
-# Silence detection defaults
-DEFAULT_SILENCE_MS = 500
-DEFAULT_PADDING_MS = 150
-DEFAULT_SILENCE_THRESH_DB = -40
+# Word-gap splitting (replaces pydub silence detection)
+DEFAULT_WORD_GAP_THRESHOLD_MS = 500
 
 # SRT
 SRT_MAX_WORDS_PER_LINE = 6

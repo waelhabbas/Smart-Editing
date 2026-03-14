@@ -3,7 +3,6 @@ uvicorn[standard]
 python-multipart
 python-dotenv
 whisperx
-pydub
 rapidfuzz
 google-generativeai
 torch
