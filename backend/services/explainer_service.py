@@ -178,8 +178,11 @@ class ExplainerService(BaseService):
 
             # Only include SRT in step 1 if no B-roll/soundbite files are needed
             if not required_files:
-                from backend.pipeline.xml_generator import add_scale_keyframes
-                await asyncio.to_thread(add_scale_keyframes, xml_path, xml_path)
+                from backend.pipeline.xml_generator import add_highlight_keyframes
+                await asyncio.to_thread(
+                    add_highlight_keyframes, xml_path, xml_path,
+                    csv_shots, segments, final_clips,
+                )
 
                 srt_filename = f"{job_id}_subtitles.srt"
                 srt_path = str(OUTPUT_DIR / srt_filename)
@@ -222,7 +225,7 @@ class ExplainerService(BaseService):
         from backend.pipeline.soundbite_processor import process_soundbite_shots
         from backend.pipeline.xml_generator import (
             get_video_info, add_broll_track, add_soundbite_with_shift,
-            add_scale_keyframes, add_transition_track, add_logo_track, add_outro_track,
+            add_highlight_keyframes, add_transition_track, add_logo_track, add_outro_track,
         )
         from backend.pipeline.srt_generator import generate_srt
         from backend.pipeline.transcriber import transcribe, extract_audio
@@ -329,9 +332,10 @@ class ExplainerService(BaseService):
                 import shutil
                 shutil.copy2(current_xml, final_xml_path)
 
-            # Add scale zoom keyframes
+            # Add highlight zoom keyframes
             await asyncio.to_thread(
-                add_scale_keyframes, final_xml_path, final_xml_path
+                add_highlight_keyframes, final_xml_path, final_xml_path,
+                csv_shots, segments, final_clips,
             )
 
             # Add transition track (V4 alpha video + A3 embedded audio)

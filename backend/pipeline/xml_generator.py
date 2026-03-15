@@ -366,20 +366,28 @@ def add_broll_track(
     return output_path
 
 
-def add_scale_keyframes(
+def add_highlight_keyframes(
     existing_xml_path: str,
     output_path: str,
-    min_duration_sec: float = 3.0,
+    csv_shots: list[dict],
+    segments: list[dict],
+    final_clips: list[dict],
     scale_from: float = 100.0,
-    scale_to: float = 107.0,
+    scale_to: float = 110.0,
+    zoom_frames: int = 15,
 ) -> str:
     """
-    Add slow zoom-in keyframes to V1 clips.
+    Add quick zoom-in keyframes on V1 clips at the moment a highlight
+    phrase is spoken.
 
-    Clips longer than min_duration_sec: scale 100→107 (start to end).
-    Clips shorter: left unchanged (no keyframes).
+    For each clip whose shot has a 'highlight' phrase in the CSV:
+      - Find the highlight words in the WhisperX transcript
+      - At the first highlight word: keyframe scale_from → scale_to in zoom_frames
+
+    Clips without a highlight get no keyframes at all.
     """
     import re
+    from rapidfuzz import fuzz
 
     tree = ET.parse(existing_xml_path)
     root = tree.getroot()
@@ -405,18 +413,82 @@ def add_scale_keyframes(
         _write_xml(root, output_path)
         return output_path
 
-    min_dur_frames = _seconds_to_frames(min_duration_sec, seq_tb)
+    # Build highlight map: shot_number → highlight text
+    highlight_map = {}
+    for shot in csv_shots:
+        hl = shot.get("highlight")
+        if hl:
+            highlight_map[shot["shot_number"]] = hl
+
+    if not highlight_map:
+        log.info("No highlight phrases in CSV, skipping highlight keyframes")
+        _write_xml(root, output_path)
+        return output_path
+
+    # Build flat word list from WhisperX segments
+    all_words = []
+    for seg in segments:
+        for w in seg.get("words", []):
+            if "start" in w and "end" in w:
+                all_words.append(w)
+
+    v1_clipitems = v1_track.findall("clipitem")
     count = 0
 
-    for clipitem in v1_track.findall("clipitem"):
-        in_frame = int(clipitem.find("in").text)
-        out_frame = int(clipitem.find("out").text)
-        clip_dur = out_frame - in_frame
+    for idx, clipitem in enumerate(v1_clipitems):
+        if idx >= len(final_clips):
+            break
 
-        if clip_dur < min_dur_frames:
+        clip_info = final_clips[idx]
+        shot_num = clip_info["shot_number"]
+
+        if shot_num not in highlight_map:
             continue
 
-        # Create filter: scale 100→107 over full clip duration
+        highlight_text = highlight_map[shot_num]
+        clip_start_sec = clip_info["start"]
+        clip_end_sec = clip_info["end"]
+
+        # Get words within this clip's source time range
+        clip_words = [
+            w for w in all_words
+            if w["start"] >= clip_start_sec - 0.1 and w["end"] <= clip_end_sec + 0.1
+        ]
+
+        if not clip_words:
+            log.warning("Shot %d: no WhisperX words in range %.2f-%.2f",
+                        shot_num, clip_start_sec, clip_end_sec)
+            continue
+
+        # Sliding window: find highlight phrase in clip words
+        hl_words = highlight_text.split()
+        window_size = len(hl_words)
+        best_score = 0
+        best_start_time = None
+
+        for i in range(len(clip_words) - window_size + 1):
+            window = clip_words[i:i + window_size]
+            window_text = " ".join(w["word"] for w in window)
+            score = fuzz.token_set_ratio(highlight_text.lower(), window_text.lower())
+            if score > best_score:
+                best_score = score
+                best_start_time = window[0]["start"]
+
+        if best_score < 60 or best_start_time is None:
+            log.warning("Shot %d: highlight '%s' not found (best score=%d)",
+                        shot_num, highlight_text, best_score)
+            continue
+
+        # Convert highlight start time to source frame
+        hl_frame = round(best_start_time * seq_tb)
+
+        # Clamp within clip's in/out range
+        in_frame = int(clipitem.find("in").text)
+        out_frame = int(clipitem.find("out").text)
+        hl_frame = max(hl_frame, in_frame)
+        hl_end_frame = min(hl_frame + zoom_frames, out_frame)
+
+        # Add keyframes: scale_from at hl_frame → scale_to at hl_frame+zoom_frames
         filter_elem = ET.SubElement(clipitem, "filter")
         effect = ET.SubElement(filter_elem, "effect")
         ET.SubElement(effect, "name").text = "Basic Motion"
@@ -432,16 +504,18 @@ def add_scale_keyframes(
         ET.SubElement(param, "valuemax").text = "1000"
         ET.SubElement(param, "value").text = str(scale_from)
 
-        for when, value in [(in_frame, scale_from), (out_frame, scale_to)]:
+        for when, value in [(hl_frame, scale_from), (hl_end_frame, scale_to)]:
             keyframe_el = ET.SubElement(param, "keyframe")
             ET.SubElement(keyframe_el, "when").text = str(when)
             ET.SubElement(keyframe_el, "value").text = str(value)
             interp = ET.SubElement(keyframe_el, "interpolation")
             ET.SubElement(interp, "name").text = "bezier"
 
+        log.info("Shot %d: highlight zoom at %.2fs (frame %d), score=%d",
+                 shot_num, best_start_time, hl_frame, best_score)
         count += 1
 
-    log.info("Added scale keyframes (100→107) to %d V1 clips (>%.1fs)", count, min_duration_sec)
+    log.info("Added highlight keyframes (100→110) to %d V1 clips", count)
 
     _write_xml(root, output_path)
     return output_path

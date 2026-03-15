@@ -2,7 +2,7 @@
 Parse the unified CSV template format.
 
 CSV format:
-shot_number,text,Type,File_name,cut-01/in,cut-01/out,cut-02/in,cut-02/out,cut-03/in,cut-03/out
+shot_number,text,High-Light,Type,File_name,cut-01/in,cut-01/out,cut-02/in,cut-02/out,cut-03/in,cut-03/out
 """
 
 import csv
@@ -46,6 +46,7 @@ def parse_csv_template(csv_path: str) -> list[dict]:
                 continue
 
             text = row.get("text", "").strip()
+            highlight = row.get("High-Light", "").strip() or None
             shot_type = row.get("Type", "").strip() or "None"
             file_name = row.get("File_name", "").strip() or None
 
@@ -78,6 +79,7 @@ def parse_csv_template(csv_path: str) -> list[dict]:
             shots.append({
                 "shot_number": shot_number,
                 "text": text,
+                "highlight": highlight,
                 "type": shot_type,
                 "file_name": file_name,
                 "cuts": cuts,
