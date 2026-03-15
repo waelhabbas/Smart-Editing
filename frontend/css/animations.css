@@ -225,7 +225,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     width: 70vw;
-    max-width: 900px;
+    max-width: 1000px;
     pointer-events: none;
     z-index: 0;
 }
@@ -237,7 +237,7 @@
 
 .bg-logo path {
     fill: none;
-    stroke-width: 0.25;
+    stroke-width: 0.035;
     stroke-linecap: round;
     stroke-linejoin: round;
     animation: stroke-wave 8s ease-in-out infinite;
@@ -249,7 +249,7 @@
 }
 
 .bg-logo__icon {
-    stroke-width: 0.2;
+    stroke-width: 0.035;
     animation-delay: -5s !important;
 }
 

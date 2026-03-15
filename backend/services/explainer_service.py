@@ -90,8 +90,19 @@ class ExplainerService(BaseService):
             if not scenes:
                 raise HTTPException(400, "No scenes detected in video")
 
-            # 5. Build base timeline from selected takes
-            selected_clips = gemini_result["selected_clips"]
+            # 5. Text-based take selection (precise word-level boundaries)
+            from backend.pipeline.text_matcher import select_takes_by_text
+            log.info("Job %s: selecting takes by text matching...", job_id)
+            text_clips = select_takes_by_text(csv_shots, segments)
+
+            # Use text-matched clips as primary, Gemini as fallback for missing shots
+            matched_shots = {c["shot_number"] for c in text_clips}
+            selected_clips = list(text_clips)
+            for gc in gemini_result["selected_clips"]:
+                if gc["shot_number"] not in matched_shots:
+                    selected_clips.append(gc)
+                    log.info("Job %s: Shot %s using Gemini fallback", job_id, gc["shot_number"])
+            selected_clips.sort(key=lambda c: c["start"])
 
             # 5b. Validate and fix clip ordering (overlaps, reversals)
             from backend.config import MIN_CLIP_DURATION_SEC
