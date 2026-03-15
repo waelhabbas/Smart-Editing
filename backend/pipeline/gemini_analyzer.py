@@ -5,6 +5,7 @@ and select the best take per shot.
 
 import json
 import logging
+import re
 import google.generativeai as genai
 
 log = logging.getLogger(__name__)
@@ -136,6 +137,42 @@ def _format_shots(csv_shots: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _repair_json(text: str) -> str:
+    """Attempt to repair truncated JSON from Gemini."""
+    # Try parsing as-is first
+    try:
+        json.loads(text)
+        return text
+    except json.JSONDecodeError:
+        pass
+
+    # Remove trailing incomplete values (truncated strings, numbers, etc.)
+    # Work backwards to find the last complete structure
+    repaired = text.rstrip()
+
+    # Close any unterminated strings
+    # Count unescaped quotes
+    in_string = False
+    for i, ch in enumerate(repaired):
+        if ch == '"' and (i == 0 or repaired[i - 1] != '\\'):
+            in_string = not in_string
+    if in_string:
+        repaired += '"'
+
+    # Remove trailing comma if present
+    repaired = re.sub(r',\s*$', '', repaired)
+
+    # Count open/close brackets to figure out what's missing
+    open_braces = repaired.count('{') - repaired.count('}')
+    open_brackets = repaired.count('[') - repaired.count(']')
+
+    # Close unclosed arrays and objects
+    repaired += ']' * open_brackets
+    repaired += '}' * open_braces
+
+    return repaired
+
+
 def _parse_response(response_text: str, segments: list[dict], csv_shots: list[dict]) -> dict:
     """Parse Gemini's JSON response and build scene/clip structures."""
     text = response_text.strip()
@@ -153,7 +190,12 @@ def _parse_response(response_text: str, segments: list[dict], csv_shots: list[di
                 json_lines.append(line)
         text = "\n".join(json_lines)
 
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        log.warning("Attempting JSON repair on truncated response...")
+        text = _repair_json(text)
+        data = json.loads(text)
 
     # Build a lookup for CSV shot text
     csv_text_map = {s["shot_number"]: s["text"] for s in csv_shots}
@@ -278,7 +320,7 @@ def analyze_with_gemini(
 
     log.info("Sending %d segments + %d shots to Gemini...", len(segments), len(csv_shots))
 
-    max_retries = 2
+    max_retries = 3
     last_error = None
 
     for attempt in range(max_retries):
@@ -287,6 +329,7 @@ def analyze_with_gemini(
                 user_prompt,
                 generation_config=genai.types.GenerationConfig(
                     temperature=0.1,
+                    max_output_tokens=65536,
                     response_mime_type="application/json",
                 ),
             )
@@ -318,3 +361,4 @@ def analyze_with_gemini(
             break
 
     raise RuntimeError(f"Gemini analysis failed after {max_retries} attempts: {last_error}")
+
