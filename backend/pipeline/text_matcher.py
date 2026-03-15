@@ -1,13 +1,24 @@
 """
 Match CSV shot text against Whisper transcription to find timeline positions.
 Uses sliding window fuzzy matching to locate where each shot's text was spoken.
+
+Pipeline:
+  1. Sliding window match (variable size) → find candidate takes
+  2. Verify each take → compare actual Whisper words against script
+  3. Pickup fallback → split incomplete takes into two parts from different takes
 """
 
+import re
 import logging
 from rapidfuzz import fuzz, process
 from backend.utils.text_normalize import normalize_arabic, normalize_text
 
 log = logging.getLogger(__name__)
+
+# Thresholds
+VERIFY_THRESHOLD = 90       # Score above this = complete take, no pickup needed
+PICKUP_MIN_SCORE = 65       # Minimum score for each pickup part
+MIN_SPLIT_WORDS = 4         # Each part of a split must have at least this many words
 
 
 def _build_word_list(segments: list[dict]) -> list[dict]:
@@ -162,6 +173,237 @@ def match_shots_to_transcript(
     return shot_takes
 
 
+def _get_words_in_range(all_words: list[dict], start: float, end: float) -> str:
+    """Get concatenated Whisper words within a time range."""
+    return " ".join(
+        w["word"] for w in all_words
+        if w["start"] is not None and start - 0.05 <= w["start"] <= end + 0.05
+    )
+
+
+def _verify_clip(
+    clip_start: float,
+    clip_end: float,
+    expected_text: str,
+    all_words: list[dict],
+    lang: str,
+) -> float:
+    """
+    Verify a clip by comparing actual Whisper words in the clip range
+    against the expected script text.
+
+    Returns fuzz.ratio score (0-100).
+    """
+    actual = _get_words_in_range(all_words, clip_start, clip_end)
+    if not actual:
+        return 0.0
+    norm_expected = normalize_text(expected_text, lang)
+    norm_actual = normalize_text(actual, lang)
+    return fuzz.ratio(norm_expected, norm_actual)
+
+
+def _find_split_points(text: str) -> list[tuple[str, str]]:
+    """
+    Find natural sentence boundaries to split text into two parts.
+
+    Tries multiple patterns:
+    1. Period/question mark followed by space (sentence boundary)
+    2. Comma + and/or (clause boundary)
+    3. Quote + and (e.g., violence' and which)
+
+    Returns list of (part1, part2) tuples, each part >= MIN_SPLIT_WORDS words.
+    """
+    splits = []
+
+    # Pattern 1: Sentence boundaries (. ? !)
+    for m in re.finditer(r'[.?!]\s+', text):
+        _add_split(splits, text, m.end())
+
+    # Pattern 2: ", and " or ", or " clause boundaries
+    for m in re.finditer(r',\s+(?:and|or)\s+', text, re.IGNORECASE):
+        _add_split(splits, text, m.start() + 1)  # split after comma
+
+    # Pattern 3: Quote + and (e.g., violence' and)
+    for m in re.finditer(r"['\u2019\u201D]\s+and\s+", text, re.IGNORECASE):
+        _add_split(splits, text, m.end())
+
+    # Pattern 4: Comma-separated clauses (split at comma + space)
+    # More aggressive — tries every comma as a potential pickup point
+    for m in re.finditer(r',\s+', text):
+        _add_split(splits, text, m.end())
+
+    return splits
+
+
+def _add_split(splits: list, text: str, pos: int):
+    """Helper to add a valid split point."""
+    part1 = text[:pos].strip()
+    part2 = text[pos:].strip()
+    if part1 and part2:
+        w1 = len(part1.split())
+        w2 = len(part2.split())
+        if w1 >= MIN_SPLIT_WORDS and w2 >= MIN_SPLIT_WORDS:
+            splits.append((part1, part2))
+
+
+def _find_best_match(
+    text: str,
+    all_words: list[dict],
+    lang: str,
+    min_score: int,
+    max_gap_sec: float,
+    search_after: float = 0.0,
+) -> list[dict]:
+    """
+    Core sliding window matching with variable window sizes.
+
+    Returns grouped peaks (one per distinct take), filtered to start
+    after search_after, sorted by start time.
+    """
+    shot_words = text.split()
+    base_size = len(shot_words)
+    if base_size == 0:
+        return []
+
+    normalized_shot = normalize_text(text, lang)
+
+    min_win = max(1, base_size - 2)
+    max_win = base_size + 5
+    candidates = []
+
+    for window_size in range(min_win, max_win + 1):
+        if window_size > len(all_words):
+            break
+
+        for i in range(len(all_words) - window_size + 1):
+            window = all_words[i:i + window_size]
+
+            # Skip windows that start before search_after
+            if window[0]["start"] < search_after - 0.5:
+                continue
+
+            # Quality check: reject windows with any word gap > max_gap_sec
+            has_long_gap = False
+            for j in range(1, len(window)):
+                gap = window[j]["start"] - window[j - 1]["end"]
+                if gap > max_gap_sec:
+                    has_long_gap = True
+                    break
+            if has_long_gap:
+                continue
+
+            phrase = " ".join(w["word"] for w in window)
+            normalized_phrase = normalize_text(phrase, lang)
+            score = fuzz.ratio(normalized_shot, normalized_phrase)
+
+            if score >= min_score:
+                candidates.append({
+                    "start": window[0]["start"],
+                    "end": window[-1]["end"],
+                    "score": score,
+                    "idx": i,
+                    "window_size": window_size,
+                })
+
+    if not candidates:
+        return []
+
+    # Group nearby candidates and find the PEAK (best score) per group
+    candidates.sort(key=lambda x: x["start"])
+    peaks = []
+    current_group = [candidates[0]]
+
+    for c in candidates[1:]:
+        if c["start"] <= current_group[-1]["end"] + 2.0:
+            current_group.append(c)
+        else:
+            best = max(current_group, key=lambda x: x["score"])
+            peaks.append(best)
+            current_group = [c]
+
+    best = max(current_group, key=lambda x: x["score"])
+    peaks.append(best)
+
+    return peaks
+
+
+def _try_pickup(
+    text: str,
+    all_words: list[dict],
+    lang: str,
+    min_score: int,
+    max_gap_sec: float,
+    search_after: float,
+) -> list[dict] | None:
+    """
+    Try to construct a complete reading from two separate parts (pickup).
+
+    When the reporter didn't finish a shot in one take, they often
+    re-read just the ending later. This function:
+    1. Finds natural split points in the text
+    2. Matches each part independently
+    3. Returns two clips if a valid pickup is found
+
+    Returns list of 2 clips if successful, None if no valid pickup found.
+    """
+    split_points = _find_split_points(text)
+    if not split_points:
+        return None
+
+    best_pickup = None
+    best_avg_score = 0.0
+
+    for part1_text, part2_text in split_points:
+        # Find best match for part 1
+        part1_peaks = _find_best_match(
+            part1_text, all_words, lang, PICKUP_MIN_SCORE, max_gap_sec,
+            search_after=search_after,
+        )
+        if not part1_peaks:
+            continue
+
+        for p1 in part1_peaks:
+            # Verify part 1
+            p1_verify = _verify_clip(p1["start"], p1["end"], part1_text, all_words, lang)
+            if p1_verify < PICKUP_MIN_SCORE:
+                continue
+
+            # Find best match for part 2, searching AFTER part 1
+            part2_peaks = _find_best_match(
+                part2_text, all_words, lang, PICKUP_MIN_SCORE, max_gap_sec,
+                search_after=p1["end"] - 0.5,
+            )
+            if not part2_peaks:
+                continue
+
+            for p2 in part2_peaks:
+                # Part 2 must start after part 1 ends
+                if p2["start"] < p1["end"] - 0.5:
+                    continue
+
+                p2_verify = _verify_clip(p2["start"], p2["end"], part2_text, all_words, lang)
+                if p2_verify < PICKUP_MIN_SCORE:
+                    continue
+
+                avg_score = (p1_verify + p2_verify) / 2.0
+
+                if avg_score > best_avg_score:
+                    best_avg_score = avg_score
+                    best_pickup = (
+                        {**p1, "score": p1_verify, "text_part": part1_text},
+                        {**p2, "score": p2_verify, "text_part": part2_text},
+                    )
+
+    if best_pickup is None:
+        return None
+
+    p1, p2 = best_pickup
+    log.info("  Pickup found: [%.2f-%.2f] score=%d + [%.2f-%.2f] score=%d (avg=%.0f)",
+             p1["start"], p1["end"], p1["score"],
+             p2["start"], p2["end"], p2["score"], best_avg_score)
+    return [p1, p2]
+
+
 def select_takes_by_text(
     csv_shots: list[dict],
     segments: list[dict],
@@ -169,28 +411,26 @@ def select_takes_by_text(
     max_gap_sec: float = 3.0,
 ) -> list[dict]:
     """
-    Select the best take per shot using direct text matching.
+    Select the best take per shot using direct text matching with
+    verification and pickup fallback.
 
-    For each CSV shot, finds all occurrences of the shot's text in the
-    word-level transcript using sliding window fuzzy matching with variable
-    window sizes, then selects the best take while maintaining chronological
-    order.
-
-    Uses fuzz.ratio (order-sensitive) to penalize stutters, repeats, and
-    incomplete readings. Tries multiple window sizes (N-2 to N+5) to handle
-    reporters who add or skip words compared to the script.
+    Pipeline for each shot:
+      1. Find all candidate takes using sliding window (variable size)
+      2. Select the last valid take (reporter improves over time)
+      3. Verify: compare actual Whisper words in clip range vs script
+      4. If verified (score >= 90): use as-is
+      5. If incomplete (score < 90): try pickup (split into two parts)
+      6. If pickup fails: fall back to best single take
 
     Args:
         csv_shots: Parsed CSV shots with shot_number and text.
         segments: WhisperX transcription segments with word timestamps.
-        min_score: Minimum fuzzy match score (0-100). Default 60 (lower
-            than before because fuzz.ratio is stricter than token_set_ratio).
+        min_score: Minimum fuzzy match score for initial window matching.
         max_gap_sec: Maximum gap between consecutive words in a window.
-            Windows with any gap > this are rejected as interrupted readings.
 
     Returns:
-        List of selected clips: [{"start", "end", "shot_number", "text", "score"}, ...]
-        sorted by start time, one per shot.
+        List of clips sorted by start time. Incomplete shots may produce
+        two clips (pickup parts) with the same shot_number.
     """
     all_words = _build_word_list(segments)
     if not all_words:
@@ -203,103 +443,94 @@ def select_takes_by_text(
     last_end = 0.0
 
     for shot in csv_shots:
-        text = shot.get("text", "")
+        text = shot.get("text", "").replace("\n", " ").strip()
         shot_num = shot["shot_number"]
 
         if not text:
             continue
 
         lang = _detect_language(text)
-        shot_words = text.split()
-        base_size = len(shot_words)
 
-        if base_size == 0:
+        if len(text.split()) == 0:
             continue
 
-        normalized_shot = normalize_text(text, lang)
+        # Step 1: Find all candidate takes (full text)
+        peaks = _find_best_match(
+            text, all_words, lang, min_score, max_gap_sec,
+            search_after=0.0,
+        )
 
-        # Try variable window sizes: N-2 to N+5 to handle stutters/extras
-        min_win = max(1, base_size - 2)
-        max_win = base_size + 5
-        candidates = []
-
-        for window_size in range(min_win, max_win + 1):
-            if window_size > len(all_words):
-                break
-
-            for i in range(len(all_words) - window_size + 1):
-                window = all_words[i:i + window_size]
-
-                # Quality check: reject windows with any word gap > max_gap_sec
-                has_long_gap = False
-                for j in range(1, len(window)):
-                    gap = window[j]["start"] - window[j - 1]["end"]
-                    if gap > max_gap_sec:
-                        has_long_gap = True
-                        break
-                if has_long_gap:
-                    continue
-
-                phrase = " ".join(w["word"] for w in window)
-                normalized_phrase = normalize_text(phrase, lang)
-
-                # Use fuzz.ratio (order-sensitive) to penalize stutters/repeats
-                score = fuzz.ratio(normalized_shot, normalized_phrase)
-
-                if score >= min_score:
-                    candidates.append({
-                        "start": window[0]["start"],
-                        "end": window[-1]["end"],
-                        "score": score,
-                        "idx": i,
-                        "window_size": window_size,
-                    })
-
-        if not candidates:
+        if not peaks:
             log.warning("Shot %d: no text match found (min_score=%d)", shot_num, min_score)
             continue
 
-        # Group nearby candidates and find the PEAK (best score) per group
-        candidates.sort(key=lambda x: x["start"])
-        peaks = []
-        current_group = [candidates[0]]
-
-        for c in candidates[1:]:
-            # Same take if windows overlap or are within 2 seconds
-            if c["start"] <= current_group[-1]["end"] + 2.0:
-                current_group.append(c)
-            else:
-                best = max(current_group, key=lambda x: x["score"])
-                peaks.append(best)
-                current_group = [c]
-
-        best = max(current_group, key=lambda x: x["score"])
-        peaks.append(best)
-
-        # Filter: only takes that start after the previous shot's end
+        # Step 2: Filter to takes after previous shot's end
         valid_takes = [t for t in peaks if t["start"] >= last_end - 0.5]
-
         if not valid_takes:
-            # Relaxed fallback: use any take
             valid_takes = peaks
             log.warning("Shot %d: no takes after %.2fs, using best available", shot_num, last_end)
 
-        # Select the LAST valid take (reporter usually improves over time)
+        # Select the LAST valid take (reporter usually improves)
         selected = valid_takes[-1]
 
-        selected_clips.append({
-            "start": selected["start"],
-            "end": selected["end"],
-            "shot_number": shot_num,
-            "text": text,
-            "score": selected["score"],
-        })
-        last_end = selected["end"]
+        # Step 3: Verify — compare actual Whisper words vs script
+        verify_score = _verify_clip(
+            selected["start"], selected["end"], text, all_words, lang,
+        )
 
-        log.info("Shot %d: selected [%.2f-%.2f] (%.1fs, score=%d, win=%d/%d, %d take(s))",
-                 shot_num, selected["start"], selected["end"],
-                 selected["end"] - selected["start"],
-                 selected["score"], selected["window_size"], base_size, len(peaks))
+        # Step 4: If verified, use as-is
+        if verify_score >= VERIFY_THRESHOLD:
+            selected_clips.append({
+                "start": selected["start"],
+                "end": selected["end"],
+                "shot_number": shot_num,
+                "text": text,
+                "score": verify_score,
+            })
+            last_end = selected["end"]
+            log.info("Shot %d: VERIFIED [%.2f-%.2f] (%.1fs, score=%d, %d take(s))",
+                     shot_num, selected["start"], selected["end"],
+                     selected["end"] - selected["start"],
+                     verify_score, len(peaks))
+            continue
+
+        # Step 5: Incomplete — try pickup (two-part split)
+        log.info("Shot %d: verify_score=%d < %d, trying pickup...",
+                 shot_num, verify_score, VERIFY_THRESHOLD)
+
+        pickup = _try_pickup(
+            text, all_words, lang, min_score, max_gap_sec,
+            search_after=last_end - 0.5,
+        )
+
+        if pickup:
+            for part in pickup:
+                selected_clips.append({
+                    "start": part["start"],
+                    "end": part["end"],
+                    "shot_number": shot_num,
+                    "text": part.get("text_part", text),
+                    "score": part["score"],
+                })
+            last_end = pickup[-1]["end"]
+            log.info("Shot %d: PICKUP [%.2f-%.2f]+[%.2f-%.2f] (scores=%d+%d, %d take(s))",
+                     shot_num, pickup[0]["start"], pickup[0]["end"],
+                     pickup[1]["start"], pickup[1]["end"],
+                     pickup[0]["score"], pickup[1]["score"], len(peaks))
+        else:
+            # Step 6: Pickup failed — fall back to best single take
+            selected_clips.append({
+                "start": selected["start"],
+                "end": selected["end"],
+                "shot_number": shot_num,
+                "text": text,
+                "score": verify_score,
+            })
+            last_end = selected["end"]
+            log.info("Shot %d: FALLBACK [%.2f-%.2f] (%.1fs, score=%d, no valid pickup)",
+                     shot_num, selected["start"], selected["end"],
+                     selected["end"] - selected["start"],
+                     verify_score, )
 
     return selected_clips
 
