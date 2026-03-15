@@ -369,15 +369,15 @@ def add_broll_track(
 def add_scale_keyframes(
     existing_xml_path: str,
     output_path: str,
-    zoom_duration_sec: float = 2.0,
+    min_duration_sec: float = 3.0,
     scale_from: float = 100.0,
-    scale_to: float = 115.0,
+    scale_to: float = 107.0,
 ) -> str:
     """
-    Add scale zoom keyframes to V1 clips at shot boundaries.
+    Add slow zoom-in keyframes to V1 clips.
 
-    End of each take: scale 100→115 (ease-in, last 2 seconds).
-    Start of next take: scale 115→100 (ease-out, first 2 seconds).
+    Clips longer than min_duration_sec: scale 100→107 (start to end).
+    Clips shorter: left unchanged (no keyframes).
     """
     import re
 
@@ -386,7 +386,6 @@ def add_scale_keyframes(
 
     seq_rate = root.find(".//sequence/rate")
     seq_tb = int(seq_rate.find("timebase").text)
-    seq_ntsc = seq_rate.find("ntsc").text
 
     video_elem = root.find(".//sequence/media/video")
     tracks = video_elem.findall("track")
@@ -406,115 +405,43 @@ def add_scale_keyframes(
         _write_xml(root, output_path)
         return output_path
 
-    shot_pattern = re.compile(r"^Shot (\d+)")
-    zoom_frames = _seconds_to_frames(zoom_duration_sec, seq_tb)
-
-    # Collect clip info grouped by shot number (preserving order)
-    clip_groups = {}  # shot_num -> list of clipitem elements
-    clip_order = []   # ordered list of unique shot numbers
+    min_dur_frames = _seconds_to_frames(min_duration_sec, seq_tb)
+    count = 0
 
     for clipitem in v1_track.findall("clipitem"):
-        name_el = clipitem.find("name")
-        if name_el is None or name_el.text is None:
+        in_frame = int(clipitem.find("in").text)
+        out_frame = int(clipitem.find("out").text)
+        clip_dur = out_frame - in_frame
+
+        if clip_dur < min_dur_frames:
             continue
-        m = shot_pattern.match(name_el.text)
-        if not m:
-            continue
-        shot_num = int(m.group(1))
-        if shot_num not in clip_groups:
-            clip_groups[shot_num] = []
-            clip_order.append(shot_num)
-        clip_groups[shot_num].append(clipitem)
 
-    if not clip_order:
-        _write_xml(root, output_path)
-        return output_path
+        # Create filter: scale 100→107 over full clip duration
+        filter_elem = ET.SubElement(clipitem, "filter")
+        effect = ET.SubElement(filter_elem, "effect")
+        ET.SubElement(effect, "name").text = "Basic Motion"
+        ET.SubElement(effect, "effectid").text = "basic"
+        ET.SubElement(effect, "effectcategory").text = "motion"
+        ET.SubElement(effect, "effecttype").text = "motion"
+        ET.SubElement(effect, "mediatype").text = "video"
 
-    # Determine which clips need zoom-in (last of shot) and zoom-out (first of next shot)
-    needs_zoom_in = set()   # clipitem elements needing zoom-in at end
-    needs_zoom_out = set()  # clipitem elements needing zoom-out at start
+        param = ET.SubElement(effect, "parameter", authoringApp="PremierePro")
+        ET.SubElement(param, "parameterid").text = "scale"
+        ET.SubElement(param, "name").text = "Scale"
+        ET.SubElement(param, "valuemin").text = "0"
+        ET.SubElement(param, "valuemax").text = "1000"
+        ET.SubElement(param, "value").text = str(scale_from)
 
-    for idx, shot_num in enumerate(clip_order):
-        group = clip_groups[shot_num]
-        last_clip = group[-1]
-        needs_zoom_in.add(id(last_clip))
+        for when, value in [(in_frame, scale_from), (out_frame, scale_to)]:
+            keyframe_el = ET.SubElement(param, "keyframe")
+            ET.SubElement(keyframe_el, "when").text = str(when)
+            ET.SubElement(keyframe_el, "value").text = str(value)
+            interp = ET.SubElement(keyframe_el, "interpolation")
+            ET.SubElement(interp, "name").text = "bezier"
 
-        # First clip of NEXT shot gets zoom-out
-        if idx + 1 < len(clip_order):
-            next_shot = clip_order[idx + 1]
-            first_clip_next = clip_groups[next_shot][0]
-            needs_zoom_out.add(id(first_clip_next))
+        count += 1
 
-    # Add filters to clips
-    for shot_num in clip_order:
-        for clipitem in clip_groups[shot_num]:
-            clip_id = id(clipitem)
-            do_zoom_in = clip_id in needs_zoom_in
-            do_zoom_out = clip_id in needs_zoom_out
-
-            if not do_zoom_in and not do_zoom_out:
-                continue
-
-            in_frame = int(clipitem.find("in").text)
-            out_frame = int(clipitem.find("out").text)
-            clip_dur = out_frame - in_frame
-
-            # Build keyframes list
-            keyframes = []
-
-            if do_zoom_out and do_zoom_in:
-                # Both: zoom-out at start + zoom-in at end
-                zoom_out_end = min(in_frame + zoom_frames, out_frame)
-                zoom_in_start = max(out_frame - zoom_frames, in_frame)
-
-                # If they overlap, split the duration
-                if zoom_out_end > zoom_in_start:
-                    mid = in_frame + clip_dur // 2
-                    zoom_out_end = mid
-                    zoom_in_start = mid
-
-                keyframes.append({"when": in_frame, "value": scale_to})
-                keyframes.append({"when": zoom_out_end, "value": scale_from})
-                if zoom_in_start > zoom_out_end:
-                    keyframes.append({"when": zoom_in_start, "value": scale_from})
-                keyframes.append({"when": out_frame, "value": scale_to})
-
-            elif do_zoom_out:
-                # Zoom-out only: 115→100 at start
-                zoom_end = min(in_frame + zoom_frames, out_frame)
-                keyframes.append({"when": in_frame, "value": scale_to})
-                keyframes.append({"when": zoom_end, "value": scale_from})
-
-            elif do_zoom_in:
-                # Zoom-in only: 100→115 at end
-                zoom_start = max(out_frame - zoom_frames, in_frame)
-                keyframes.append({"when": zoom_start, "value": scale_from})
-                keyframes.append({"when": out_frame, "value": scale_to})
-
-            # Create filter element
-            filter_elem = ET.SubElement(clipitem, "filter")
-            effect = ET.SubElement(filter_elem, "effect")
-            ET.SubElement(effect, "name").text = "Basic Motion"
-            ET.SubElement(effect, "effectid").text = "basic"
-            ET.SubElement(effect, "effectcategory").text = "motion"
-            ET.SubElement(effect, "effecttype").text = "motion"
-            ET.SubElement(effect, "mediatype").text = "video"
-
-            param = ET.SubElement(effect, "parameter", authoringApp="PremierePro")
-            ET.SubElement(param, "parameterid").text = "scale"
-            ET.SubElement(param, "name").text = "Scale"
-            ET.SubElement(param, "valuemin").text = "0"
-            ET.SubElement(param, "valuemax").text = "1000"
-            ET.SubElement(param, "value").text = str(scale_from)
-
-            for kf in keyframes:
-                keyframe_el = ET.SubElement(param, "keyframe")
-                ET.SubElement(keyframe_el, "when").text = str(kf["when"])
-                ET.SubElement(keyframe_el, "value").text = str(kf["value"])
-                interp = ET.SubElement(keyframe_el, "interpolation")
-                ET.SubElement(interp, "name").text = "bezier"
-
-    log.info("Added scale keyframes to V1 clips at shot boundaries")
+    log.info("Added scale keyframes (100→107) to %d V1 clips (>%.1fs)", count, min_duration_sec)
 
     _write_xml(root, output_path)
     return output_path
