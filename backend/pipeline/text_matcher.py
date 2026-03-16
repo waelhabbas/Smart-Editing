@@ -648,3 +648,139 @@ def find_shot_span(
     if end_frames is not None:
         result["timeline_end_frames"] = end_frames
     return result
+
+
+def generate_text_tips(
+    selected_clips: list[dict],
+    csv_shots: list[dict],
+    segments: list[dict],
+) -> list[dict]:
+    """
+    Generate advisory tips about script-vs-speech differences.
+    Does NOT affect processing — display only.
+
+    Returns list of tip dicts with: shot_number, type, severity,
+    csv_text, whisper_text, score, message_en, message_ar.
+    """
+    all_words = _build_word_list(segments)
+    if not all_words:
+        return []
+
+    # Group clips by shot_number
+    from collections import defaultdict
+    clips_by_shot = defaultdict(list)
+    for c in selected_clips:
+        clips_by_shot[c["shot_number"]].append(c)
+
+    tips = []
+
+    for shot in csv_shots:
+        sn = shot["shot_number"]
+        csv_text = shot.get("text", "").replace("\n", " ").strip()
+        if not csv_text:
+            continue
+
+        clips = clips_by_shot.get(sn, [])
+        if not clips:
+            tips.append({
+                "shot_number": sn,
+                "type": "no_match",
+                "severity": "warning",
+                "csv_text": csv_text[:80],
+                "whisper_text": "",
+                "score": 0,
+                "message_en": "No matching speech found in video",
+                "message_ar": "\u0644\u0645 \u064a\u062a\u0645 \u0627\u0644\u0639\u062b\u0648\u0631 \u0639\u0644\u0649 \u0643\u0644\u0627\u0645 \u0645\u0637\u0627\u0628\u0642 \u0641\u064a \u0627\u0644\u0641\u064a\u062f\u064a\u0648",
+            })
+            continue
+
+        # Get whisper text in clip range
+        whisper_parts = []
+        for c in clips:
+            words = _get_words_in_range(all_words, c["start"], c["end"])
+            if words:
+                whisper_parts.append(words)
+        whisper_text = " ".join(whisper_parts)
+
+        lang = _detect_language(csv_text)
+        norm_csv = normalize_text(csv_text, lang)
+        norm_whisper = normalize_text(whisper_text, lang)
+
+        score = fuzz.ratio(norm_csv, norm_whisper) if norm_whisper else 0
+        avg_clip_score = sum(c.get("score", 0) for c in clips) / len(clips)
+
+        # Short clip check
+        for c in clips:
+            dur = c["end"] - c["start"]
+            if dur < 1.0:
+                tips.append({
+                    "shot_number": sn,
+                    "type": "short_clip",
+                    "severity": "warning",
+                    "csv_text": csv_text[:80],
+                    "whisper_text": whisper_text[:80],
+                    "score": round(score),
+                    "message_en": f"Very short clip ({dur:.2f}s) — may cause a jump cut",
+                    "message_ar": f"\u0645\u0642\u0637\u0639 \u0642\u0635\u064a\u0631 \u062c\u062f\u0627\u064b ({dur:.2f}s) \u2014 \u0642\u062f \u064a\u0633\u0628\u0628 \u0642\u0637\u0639 \u0645\u0641\u0627\u062c\u0626",
+                })
+                break
+
+        # Pickup (multi-clip shot)
+        if len(clips) > 1:
+            tips.append({
+                "shot_number": sn,
+                "type": "pickup",
+                "severity": "info",
+                "csv_text": csv_text[:80],
+                "whisper_text": whisper_text[:80],
+                "score": round(score),
+                "message_en": f"Text assembled from {len(clips)} different takes",
+                "message_ar": f"\u062a\u0645 \u062a\u062c\u0645\u064a\u0639 \u0627\u0644\u0646\u0635 \u0645\u0646 {len(clips)} takes \u0645\u062e\u062a\u0644\u0641\u0629",
+            })
+            continue
+
+        # Low confidence
+        if avg_clip_score < VERIFY_THRESHOLD:
+            tips.append({
+                "shot_number": sn,
+                "type": "low_confidence",
+                "severity": "warning",
+                "csv_text": csv_text[:80],
+                "whisper_text": whisper_text[:80],
+                "score": round(avg_clip_score),
+                "message_en": f"Low match confidence ({round(avg_clip_score)}%) — verify manually",
+                "message_ar": f"\u0646\u0633\u0628\u0629 \u062a\u0637\u0627\u0628\u0642 \u0645\u0646\u062e\u0641\u0636\u0629 ({round(avg_clip_score)}%) \u2014 \u062a\u062d\u0642\u0642 \u064a\u062f\u0648\u064a\u0627\u064b",
+            })
+            continue
+
+        # Compare actual words
+        if score >= 95:
+            # Perfect or near-perfect — no tip needed
+            continue
+
+        # Minor wording difference
+        if score >= 70:
+            tips.append({
+                "shot_number": sn,
+                "type": "minor_diff",
+                "severity": "info",
+                "csv_text": csv_text[:80],
+                "whisper_text": whisper_text[:80],
+                "score": round(score),
+                "message_en": "Reporter used slightly different wording",
+                "message_ar": "\u0627\u0644\u0645\u0630\u064a\u0639 \u0627\u0633\u062a\u062e\u062f\u0645 \u0635\u064a\u0627\u063a\u0629 \u0645\u062e\u062a\u0644\u0641\u0629 \u0642\u0644\u064a\u0644\u0627\u064b",
+            })
+        else:
+            tips.append({
+                "shot_number": sn,
+                "type": "major_diff",
+                "severity": "warning",
+                "csv_text": csv_text[:80],
+                "whisper_text": whisper_text[:80],
+                "score": round(score),
+                "message_en": "Reporter said significantly different text — update CSV",
+                "message_ar": "\u0627\u0644\u0645\u0630\u064a\u0639 \u0642\u0627\u0644 \u0646\u0635\u0627\u064b \u0645\u062e\u062a\u0644\u0641\u0627\u064b \u0628\u0634\u0643\u0644 \u0643\u0628\u064a\u0631 \u2014 \u062d\u062f\u0651\u062b \u0627\u0644 CSV",
+            })
+
+    log.info("Generated %d text tips for %d shots", len(tips), len(csv_shots))
+    return tips

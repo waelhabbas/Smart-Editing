@@ -73,6 +73,9 @@ export const STRINGS = {
         token_output: "إخراج",
         token_total: "إجمالي",
 
+        // Text Tips
+        tips_title: "ملاحظات على النص",
+
         // States
         empty_title: "ابدأ بالخطوة 1",
         empty_desc: "ارفع الفيديو وملف CSV لبدء المعالجة",
@@ -150,6 +153,9 @@ export const STRINGS = {
         token_input: "Input",
         token_output: "Output",
         token_total: "Total",
+
+        // Text Tips
+        tips_title: "Script Notes",
 
         // States
         empty_title: "Start with Step 1",

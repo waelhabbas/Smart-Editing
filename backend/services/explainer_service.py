@@ -112,6 +112,10 @@ class ExplainerService(BaseService):
             if clip_fixes:
                 log.warning("Job %s: %d clip fixes applied", job_id, len(clip_fixes))
 
+            # 5c. Generate text tips (advisory only, no effect on processing)
+            from backend.pipeline.text_matcher import generate_text_tips
+            text_tips = generate_text_tips(selected_clips, csv_shots, segments)
+
             # 6. Split clips at word gaps (using WhisperX word timestamps)
             final_clips = split_clips_on_word_gaps(selected_clips, segments)
 
@@ -174,6 +178,7 @@ class ExplainerService(BaseService):
                 "required_files": required_files,
                 "token_usage": gemini_result.get("token_usage"),
                 "clip_fixes": clip_fixes if clip_fixes else None,
+                "text_tips": text_tips if text_tips else None,
             }
 
             # Only include SRT in step 1 if no B-roll/soundbite files are needed

@@ -83,6 +83,9 @@ const dom = {
     // Warnings
     warningsBox: $('#warningsBox'),
 
+    // Text Tips
+    tipsBox: $('#tipsBox'),
+
     // Error
     errorMsg: $('#errorMsg'),
 };
@@ -302,6 +305,34 @@ function displayStep1Results(data) {
         dom.downloadSrt.classList.remove('hidden');
     } else {
         dom.downloadSrt.classList.add('hidden');
+    }
+
+    // Text tips
+    if (data.text_tips && data.text_tips.length > 0) {
+        dom.tipsBox.classList.remove('hidden');
+        const isAr = document.documentElement.getAttribute('lang') === 'ar';
+        const severityIcon = { warning: '\u26a0\ufe0f', info: '\u2139\ufe0f', success: '\u2705' };
+        const tipRows = data.text_tips.map(tip => {
+            const icon = severityIcon[tip.severity] || '\u2139\ufe0f';
+            const msg = isAr ? tip.message_ar : tip.message_en;
+            const badge = tip.score > 0 ? `<span class="tip-score">${tip.score}%</span>` : '';
+            return `
+                <div class="tip-item tip-item--${tip.severity}">
+                    <span class="tip-icon">${icon}</span>
+                    <span class="tip-shot">#${tip.shot_number}</span>
+                    <span class="tip-message">${msg} ${badge}</span>
+                </div>`;
+        }).join('');
+        dom.tipsBox.innerHTML = `
+            <div class="tips-container">
+                <div class="tips-header">
+                    <strong data-i18n="tips_title">${t('tips_title')}</strong>
+                    <span class="tips-count">${data.text_tips.length}</span>
+                </div>
+                <div class="tips-list">${tipRows}</div>
+            </div>`;
+    } else {
+        dom.tipsBox.classList.add('hidden');
     }
 
     // Show Step 2 if files are needed
